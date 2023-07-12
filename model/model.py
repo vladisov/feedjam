@@ -11,7 +11,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     handle = Column(String,)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, server_default=func.now())
 
     feeds = relationship("Feed", back_populates="user")
     subscriptions = relationship("Subscription", back_populates="user")
@@ -28,8 +28,9 @@ class Feed(Base):
     __tablename__ = "feeds"
     id = Column(Integer, primary_key=True, index=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(),
+                        onupdate=func.now())
 
     source_id = Column(Integer, ForeignKey("sources.id"))
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -49,9 +50,10 @@ class FeedItem(Base):
     source_id = Column(Integer, ForeignKey("sources.id"))
     title = Column(String,)
     link = Column(String,)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now())
-    published = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(),
+                        onupdate=func.now())
+    published = Column(DateTime, server_default=func.now())
     hn_id = Column(String,)
     description = Column(String,)
     comments_link = Column(String,)
@@ -75,7 +77,7 @@ class Subscription(Base):
     is_active = Column(Boolean, default=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     source_id = Column(Integer, ForeignKey("sources.id"), index=True)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, server_default=func.now())
     last_run = Column(DateTime,)
 
     user = relationship("User", back_populates="subscriptions")
@@ -86,7 +88,7 @@ class Subscription(Base):
 class Run(Base):
     __tablename__ = "runs"
     id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, server_default=func.now())
     status = Column(String, default="pending")
 
     subscription_id = Column(Integer, ForeignKey("subscriptions.id"))
@@ -99,7 +101,7 @@ class Source(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     resource_url = Column(String, unique=True, index=True)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)
 
     subscriptions = relationship("Subscription", back_populates="source")

@@ -17,7 +17,7 @@ class FeedService:
         # self.feed_storage.mark_as_read(user_id, feed_item_id)
         pass
 
-    def fetch_feed(self, subscription_id: int) -> List[FeedItemCreate]:
+    def load_feed_from_source(self, subscription_id: int) -> List[FeedItemCreate]:
         subscription = self.subscription_storage.get_subscription(
             subscription_id)
         if not subscription:

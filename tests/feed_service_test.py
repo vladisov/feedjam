@@ -29,7 +29,7 @@ def test_fetch_feed(cleanup):
 
         mock_get_subscription.return_value = subscription
 
-        items = service.fetch_feed(subscription_id)
+        items = service.load_feed_from_source(subscription_id)
 
         mock_get_subscription.assert_called_once_with(subscription_id)
         assert len(items) == 30

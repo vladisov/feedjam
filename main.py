@@ -8,6 +8,7 @@ from utils.dependencies import get_feed_service, get_subscription_service
 from utils.dependencies import get_user_storage
 from repository.db import engine, Base
 
+
 # Base.metadata.drop_all(bind=engine)  # type: ignore
 Base.metadata.create_all(bind=engine)  # type: ignore
 

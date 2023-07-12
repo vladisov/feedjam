@@ -55,12 +55,13 @@ def do_run(run_id: int):
     db = next(get_db())
 
     feed_storage = FeedStorage(db)
-    feed_service = FeedService(feed_storage)
+    subscription_storage = SubscriptionStorage(db)
+    feed_service = FeedService(feed_storage, subscription_storage)
     run_storage = RunStorage(db)
 
     try:
         run_storage.update_run_status(run_id, "running")
-        feed_service.fetch_feed(run_id)
+        feed_service.load_feed_from_source(run_id)
     except Exception as e:
         print(e)
         run_storage.update_run_status(run_id, "failed")

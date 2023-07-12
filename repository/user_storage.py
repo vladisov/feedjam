@@ -1,20 +1,21 @@
+from typing import List
 from sqlmodel import Session
 from model.model import User
 from model.schema.user_schema import UserCreate, UserSchema
 
 
-class UserStorage():
+class UserStorage:
 
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def get_user(self, user_id: int):
+    def get_user(self, user_id: int) -> UserSchema | None:
         return self.db.query(User).filter(User.id == user_id).first()
 
-    def get_users(self, skip: int = 0, limit: int = 100):
+    def get_users(self, skip: int = 0, limit: int = 100) -> List[UserSchema]:
         return self.db.query(User).offset(skip).limit(limit).all()
 
-    def get_user_by_handle(self, handle: str):
+    def get_user_by_handle(self, handle: str) -> UserSchema | None:
         return self.db.query(User).filter(User.handle == handle).first()
 
     def create_user(self, user: UserCreate) -> UserSchema:
