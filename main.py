@@ -1,18 +1,25 @@
 from fastapi import Depends, FastAPI, HTTPException
-from model.schema.feed_schema import SubscriptionCreate, SubscriptionSchema
+from model.schema.feed_schema import RunSchema, SubscriptionCreate, SubscriptionSchema
 from model.schema.user_schema import UserCreate, UserSchema
+from repository.run_storage import RunStorage
 from repository.user_storage import UserStorage
 from service.feed_service import FeedService
 from service.subscription.subscription_service import SubscriptionService
-from utils.dependencies import get_feed_service, get_subscription_service
+from utils.dependencies import get_feed_service, get_run_storage, get_subscription_service
 from utils.dependencies import get_user_storage
 from repository.db import engine, Base
+from utils.logger import get_logger
 
+# logging.config.fileConfig(
+#     'logging.conf', disable_existing_loggers=False)
+
+# logger = logging.getLogger(__name__)
 
 # Base.metadata.drop_all(bind=engine)  # type: ignore
 Base.metadata.create_all(bind=engine)  # type: ignore
 
 app = FastAPI()
+logger = get_logger(__name__)
 
 
 @app.on_event("startup")
@@ -58,6 +65,12 @@ async def subscribe(subscription: SubscriptionCreate,
 @app.get("/subscriptions", response_model=list[SubscriptionSchema],)
 def get_subscriptions(user_id: int, sub_service: SubscriptionService = Depends(get_subscription_service)):
     subscriptions = sub_service.get_user_subscriptions(user_id)
+    return subscriptions
+
+
+@app.get("/runs", response_model=list[RunSchema],)
+def get_runs(subscription_id: int, run_storage: RunStorage = Depends(get_run_storage)):
+    subscriptions = run_storage.get_runs_by_subscription(subscription_id)
     return subscriptions
 
 

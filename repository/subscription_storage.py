@@ -1,4 +1,5 @@
 
+from datetime import timedelta
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from model.model import Subscription
@@ -28,7 +29,7 @@ class SubscriptionStorage:
                 Subscription.is_active,
                 or_(
                     Subscription.last_run.is_(None),
-                    Subscription.last_run < func.datetime('now', '-1 hour')
+                    Subscription.last_run < func.now() - timedelta(hours=4)
                 )
             )
             .all()

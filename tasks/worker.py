@@ -1,16 +1,16 @@
+from datetime import datetime
 import os
 
 from celery import Celery
 from celery.schedules import crontab
 from sqlmodel import Session
 from service.feed_service import FeedService
-from model.schema.feed_schema import RunCreate
+from model.schema.feed_schema import RunCreate, SubscriptionUpdate
 
 from repository.db import get_db
 from repository.feed_storage import FeedStorage
 from repository.run_storage import RunStorage
 from repository.subscription_storage import SubscriptionStorage
-
 
 celery = Celery(__name__)
 celery.conf.broker_url = os.environ.get(  # type: ignore
@@ -21,7 +21,7 @@ celery.conf.result_backend = os.environ.get(  # type: ignore
 celery.conf.beat_schedule = {
     'run-scheduler': {
         'task': 'schedule_run',
-        'schedule': crontab(minute='*/1'),  # execute every 10 minutes
+        'schedule': crontab(minute='*/10'),  # execute every 10 minutes
         # 'schedule': 10.0,
     },
 }
@@ -39,13 +39,9 @@ def schedule_run():
     to_run = subscription_storage.get_subscriptions_to_run()
 
     for subscription in to_run:
-        # insert pending run
         new_run = run_storage.create_run(
             RunCreate(subscription_id=subscription.id, status="pending"))
         do_run.delay(new_run.id)
-    # 1. Get all subscriptions
-    # 2. For each subscription, check if it's time to run (if it's active and latest run was more than 1 hour ago)
-    # 3. If it's time to run, run it in separate task
 
     return True
 
@@ -60,22 +56,17 @@ def do_run(run_id: int):
     run_storage = RunStorage(db)
 
     try:
+        run = run_storage.get_run(run_id)
+        if not run:
+            raise Exception("Run not found")
+
         run_storage.update_run_status(run_id, "running")
-        feed_service.load_feed_from_source(run_id)
+        feed_service.fetch_and_save_feed_items(run.subscription_id)
+        run_storage.update_run_status(run_id, "success")
+        subscription_storage.update_subscription(
+            SubscriptionUpdate(last_run=datetime.now()), run.subscription_id)
     except Exception as e:
         print(e)
         run_storage.update_run_status(run_id, "failed")
-    # subscription_service = SubscriptionService(db)
-
-    # # Assuming run_subscription fetches data from source and saves to db
-    # subscription_service.run_subscription(subscription_id)
-
-    # # Updating last_run time
-    # subscription = db.query(Subscription).filter(Subscription.id == subscription_id).first()
-    # subscription.last_run = datetime.now()
-    # db.commit()
-    # 1. run subscription
-    # 2. fetch data from source
-    # 3. save data to db
 
     return True

@@ -16,8 +16,7 @@ class SourceStorage:
 
     def create_source(self, source: SourceCreate) -> SourceSchema:
         db_source = self.db.query(Source).filter(
-            (Source.name == source.name) |
-            (Source.resource_url == source.resource_url)
+            Source.resource_url == source.resource_url
         ).first()
 
         if db_source is None:

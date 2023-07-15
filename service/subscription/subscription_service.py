@@ -5,6 +5,8 @@ from model.schema.feed_schema import SourceCreate, SubscriptionCreate, Subscript
 from repository.feed_storage import FeedStorage
 from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
+from service.subscription.source_parser_strategy import parse_name
+from utils.logger import get_logger
 
 
 class SubscriptionService:
@@ -16,11 +18,13 @@ class SubscriptionService:
         self.feed_storage = feed_storage
         self.subscription_storage = subscription_storage
         self.source_storage = source_storage
+        self.logger = get_logger(__name__)
 
     def add_subscription(self, subscription_create: SubscriptionCreate) -> SubscriptionSchema:
         # Prepare the source based on the resource_url from the incoming subscription
+        source_name = parse_name(subscription_create.resource_url)
         source_create = SourceCreate(
-            resource_url=subscription_create.resource_url, name=subscription_create.resource_url)
+            resource_url=subscription_create.resource_url, name=source_name)
 
         # Fetch the source based on the resource_url or create it if it does not exist
         source = self.source_storage.create_source(source_create)
@@ -31,6 +35,8 @@ class SubscriptionService:
         # Add the subscription
         created_subscription = self.subscription_storage.create_subscription(
             subscription_create)
+
+        self.logger.debug(f"Created subscription: {created_subscription}")
 
         return created_subscription
 

@@ -1,5 +1,6 @@
 from fastapi import Depends
 from repository.db import get_db
+from repository.run_storage import RunStorage
 from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
 from repository.user_storage import UserStorage
@@ -25,8 +26,12 @@ def get_source_storage(db=Depends(get_db)):
     return SourceStorage(db)
 
 
-def get_feed_service(feed_storage=Depends(get_feed_storage)):
-    return FeedService(feed_storage)
+def get_run_storage(db=Depends(get_db)):
+    return RunStorage(db)
+
+
+def get_feed_service(feed_storage=Depends(get_feed_storage), subscription_storage=Depends(get_subscription_storage)):
+    return FeedService(feed_storage, subscription_storage)
 
 
 def get_subscription_service(feed_storage=Depends(get_feed_storage),

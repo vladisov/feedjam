@@ -82,20 +82,21 @@ class SourceSchema(SourceBase):
 
 class SubscriptionBase(BaseModel):
     is_active: Optional[bool] = True
-    user_id: int
     source_id: Optional[int] = None
 
 
 class SubscriptionCreate(SubscriptionBase):
     resource_url: str
+    user_id: int
 
 
 class SubscriptionUpdate(SubscriptionBase):
-    pass
+    last_run: Optional[datetime] = None
 
 
 class SubscriptionSchema(SubscriptionBase):
     id: int
+    user_id: int
     created_at: datetime
     source: SourceSchema
     last_run: Optional[datetime] = None
