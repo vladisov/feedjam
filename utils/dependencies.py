@@ -1,4 +1,5 @@
 from fastapi import Depends
+from service.data_extractor import DataExtractor
 from repository.db import get_db
 from repository.run_storage import RunStorage
 from repository.source_storage import SourceStorage
@@ -8,6 +9,7 @@ from service.feed_service import FeedService
 
 from service.subscription.subscription_service import SubscriptionService
 from repository.feed_storage import FeedStorage
+from utils import config
 
 
 def get_user_storage(db=Depends(get_db)):
@@ -30,8 +32,13 @@ def get_run_storage(db=Depends(get_db)):
     return RunStorage(db)
 
 
-def get_feed_service(feed_storage=Depends(get_feed_storage), subscription_storage=Depends(get_subscription_storage)):
-    return FeedService(feed_storage, subscription_storage)
+def get_data_extractor():
+    return DataExtractor(config.OPEN_API_KEY)
+
+
+def get_feed_service(feed_storage=Depends(get_feed_storage), subscription_storage=Depends(get_subscription_storage),
+                     data_extractor=Depends(get_data_extractor)):
+    return FeedService(feed_storage, subscription_storage, data_extractor)
 
 
 def get_subscription_service(feed_storage=Depends(get_feed_storage),

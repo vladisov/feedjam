@@ -1,5 +1,6 @@
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from model.model import Run
+from model.model import Run, Subscription
 from model.schema.feed_schema import RunCreate, RunUpdate, RunSchema
 from typing import List, Optional
 
@@ -43,3 +44,15 @@ class RunStorage:
         self.db.commit()
         self.db.refresh(db_run)
         return RunSchema.from_orm(db_run)
+
+    def get_runs_by_user(self, user_id: int) -> List[RunSchema]:
+        subscriptions_by_user = self.db.query(Subscription).filter(
+            Subscription.user_id == user_id
+        ).all()
+
+        subscription_ids = [sub.id for sub in subscriptions_by_user]
+
+        runs = self.db.query(Run).filter(
+            Run.subscription_id.in_(subscription_ids)).all()
+
+        return runs

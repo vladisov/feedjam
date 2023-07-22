@@ -4,6 +4,7 @@ import os
 from celery import Celery
 from celery.schedules import crontab
 from sqlmodel import Session
+from service.data_extractor import DataExtractor
 from service.feed_service import FeedService
 from model.schema.feed_schema import RunCreate, SubscriptionUpdate
 
@@ -11,6 +12,7 @@ from repository.db import get_db
 from repository.feed_storage import FeedStorage
 from repository.run_storage import RunStorage
 from repository.subscription_storage import SubscriptionStorage
+from utils import config
 
 celery = Celery(__name__)
 celery.conf.broker_url = os.environ.get(  # type: ignore
@@ -21,7 +23,7 @@ celery.conf.result_backend = os.environ.get(  # type: ignore
 celery.conf.beat_schedule = {
     'run-scheduler': {
         'task': 'schedule_run',
-        'schedule': crontab(minute='*/10'),  # execute every 10 minutes
+        'schedule': crontab(minute='*/1'),  # execute every 10 minutes
         # 'schedule': 10.0,
     },
 }
@@ -52,7 +54,9 @@ def do_run(run_id: int):
 
     feed_storage = FeedStorage(db)
     subscription_storage = SubscriptionStorage(db)
-    feed_service = FeedService(feed_storage, subscription_storage)
+    data_extractor = DataExtractor(config.OPEN_API_KEY)
+    feed_service = FeedService(
+        feed_storage, subscription_storage, data_extractor)
     run_storage = RunStorage(db)
 
     try:

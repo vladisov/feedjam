@@ -1,5 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException
-from model.schema.feed_schema import RunSchema, SubscriptionCreate, SubscriptionSchema
+from model.schema.feed_schema import RunSchema, SubscriptionCreate, SubscriptionSchema, UserFeedItemSchema, UserFeedSchema
 from model.schema.user_schema import UserCreate, UserSchema
 from repository.run_storage import RunStorage
 from repository.user_storage import UserStorage
@@ -44,7 +44,7 @@ def get_users(skip: int = 0, limit: int = 100,
     return users
 
 
-@app.get("/feed/{user_id}")
+@app.get("/feed/{user_id}", response_model=UserFeedSchema)
 async def get_feed(user_id: int,
                    feed_service: FeedService = Depends(get_feed_service)) -> dict:
     user_feed = feed_service.get_user_feed(user_id)
@@ -69,18 +69,12 @@ def get_subscriptions(user_id: int, sub_service: SubscriptionService = Depends(g
 
 
 @app.get("/runs", response_model=list[RunSchema],)
-def get_runs(subscription_id: int, run_storage: RunStorage = Depends(get_run_storage)):
-    subscriptions = run_storage.get_runs_by_subscription(subscription_id)
-    return subscriptions
+def get_runs(user_id: int, run_storage: RunStorage = Depends(get_run_storage)):
+    runs = run_storage.get_runs_by_user(user_id)
+    return runs
 
 
-# extractor = DataExtractor(
-#     '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')
-
-
-# @app.post("/feed/add")
-# async def add_post(post: Post):
-#     summary = extractor.extract_and_summarize(post.post_url)
-#     post_data = {**post.dict(), "summary": summary, "link": post.post_url}
-#     posts.append(post_data)
-#     return {"message": "Feed added successfully!", "data": post_data}
+@app.get("/runs/{id}", response_model=list[RunSchema],)
+def get_runs_by_id(subscription_id: int, run_storage: RunStorage = Depends(get_run_storage)):
+    runs = run_storage.get_runs_by_subscription(subscription_id)
+    return runs

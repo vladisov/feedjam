@@ -1,6 +1,9 @@
+import logging
 import requests
 from bs4 import BeautifulSoup
 import openai
+
+log = logging.getLogger(__name__)
 
 
 class DataExtractor:
@@ -22,13 +25,18 @@ class DataExtractor:
         return title, text
 
     def summarize(self, title, text):
-        prompt = f"nSummarize:\n{title}\n{text}"
+        prompt = f"nSummarize in 250 words in the language of source:\n{title}\n{text}"
         response = openai.Completion.create(
             engine="text-davinci-003", prompt=prompt, max_tokens=300)
 
-        return response.choices[0].text.strip()
+        return response.choices[0].text.strip()  # type: ignore
 
     def extract_and_summarize(self, url):
-        title, text = self.get_webpage_text(url)
-        summary = self.summarize(title, text)
-        return summary, url
+        return ""
+        # try:
+        #     title, text = self.get_webpage_text(url)
+        #     summary = self.summarize(title, text)
+        #     return summary
+        # except Exception as e:
+        #     log.error(f"Error extracting and summarizing: {e}")
+        # return None

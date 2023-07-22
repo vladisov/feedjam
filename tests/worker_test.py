@@ -30,7 +30,9 @@ def test_schedule_run(mock_subscription_storage, mock_run_storage, mock_do_run, 
 @patch("tasks.worker.SubscriptionStorage")
 @patch("tasks.worker.FeedService")
 @patch("tasks.worker.RunStorage")
-def test_do_run(mock_run_storage, mock_feed_service, mock_subscription_storage, mock_feed_storage, mock_db_session):
+@patch("tasks.worker.DataExtractor")
+def test_do_run(mock_data_extractor, mock_run_storage, mock_feed_service, mock_subscription_storage,
+                mock_feed_storage, mock_db_session):
     mock_run = Mock(id=1, subscription_id=2)
     mock_run_storage.return_value.get_run.return_value = mock_run
 
@@ -42,7 +44,7 @@ def test_do_run(mock_run_storage, mock_feed_service, mock_subscription_storage, 
     mock_run_storage.return_value.update_run_status.assert_any_call(
         1, "running")
     mock_feed_service.assert_called_once_with(
-        mock_feed_storage.return_value, mock_subscription_storage.return_value)
+        mock_feed_storage.return_value, mock_subscription_storage.return_value, mock_data_extractor.return_value)
     mock_feed_service.return_value.fetch_and_save_feed_items.assert_called_once_with(
         2)
     mock_run_storage.return_value.update_run_status.assert_any_call(
