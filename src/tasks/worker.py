@@ -25,11 +25,11 @@ celery.conf.result_backend = os.environ.get(  # type: ignore
 celery.conf.beat_schedule = {
     'feed_fetcher': {
         'task': 'schedule_run',
-        'schedule': crontab(minute='*/1'),  # execute every minute
+        'schedule': crontab(minute="0"),  # execute at the start of every hour
     },
     'generate-views': {
         'task': 'generate_views',
-        'schedule': crontab(minute='*/1'),  # execute every minute
+        'schedule': crontab(minute="0"),  # execute at the start of every hour
     },
 }
 
