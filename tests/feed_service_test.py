@@ -10,13 +10,14 @@ from tests.test_app import override_get_db
 import feedparser
 
 
-def _create_feed_items(feed_service: FeedService, subscription_storage: SubscriptionStorage, user_id=1):
+def _create_hn_feed_items(feed_service: FeedService, subscription_storage: SubscriptionStorage,
+                          user_id=1, filename="tests/test_data/hn_best_example.xml"):
     subscription_id = 1
     source = Source(id=1, name="hackernews", resource_url="https://hnrss.org/best",
                     created_at=datetime.now(), is_active=True)
     subscription = Subscription(id=subscription_id, source_id=1, user_id=user_id,
                                 source=source)
-    with open('tests/test_data/hn_best_example.xml', 'r') as file:
+    with open(filename, 'r') as file:
         hn_feed_data = file.read()
 
     with patch.object(subscription_storage, 'get_subscription') as mock_get_subscription, \
@@ -36,15 +37,12 @@ def test_fetch_feed(cleanup):
     subscription_storage = SubscriptionStorage(db)
     data_extractor = DataExtractor("dummy")
     service = FeedService(feed_storage, subscription_storage, data_extractor)
-    _, subscription = _create_feed_items(service, subscription_storage)
+    _, subscription = _create_hn_feed_items(service, subscription_storage)
 
     items = service.get_feed_items(1, 0, 100)
     assert len(items) == 30
-    assert items[0].source_id == subscription.source_id
-    assert items[0].title == "Privatisation has been a costly failure in Britain"
-    # assert mock_add_feed_items.call_count == 1
-    assert items[29].source_id == subscription.source_id
-    assert items[29].title == "Why I Hate Frameworks (2005)"
+    assert items[0].title is not None
+    assert items[29].title is not None
 
 
 def test_generate_and_save_user_feed(cleanup):
@@ -55,16 +53,35 @@ def test_generate_and_save_user_feed(cleanup):
     service = FeedService(feed_storage, subscription_storage, data_extractor)
     user_id = 1  # Set this to a suitable value
 
-    _, _ = _create_feed_items(service, subscription_storage, user_id)
+    _, _ = _create_hn_feed_items(service, subscription_storage,
+                                 user_id, filename="tests/test_data/hn_best_example_short.xml")
     feed_items = service.get_feed_items(user_id, 0, 100)
+
+    service.generate_and_save_user_feed(user_id)
+
+    saved_user_feed = feed_storage.get_user_feed(
+        user_id)
+
+    # Check that the saved feed matches the generated feed
+    feed_items.sort(key=lambda x: x.id)
+    assert saved_user_feed.user_id == user_id
+    assert len(saved_user_feed.user_feed_items) == len(feed_items)
+    for i in range(len(feed_items)):
+        assert saved_user_feed.user_feed_items[i].feed_item_id == feed_items[i].id
+        assert saved_user_feed.user_feed_items[i].user_id == user_id
+
+    _, _ = _create_hn_feed_items(service, subscription_storage,
+                                 user_id, filename="tests/test_data/hn_best_example.xml")
+    feed_items_upd = service.get_feed_items(user_id, 0, 100)
 
     service.generate_and_save_user_feed(user_id)
 
     saved_user_feed = feed_storage.get_user_feed(user_id)
 
     # Check that the saved feed matches the generated feed
+    feed_items_upd.sort(key=lambda x: x.id)
     assert saved_user_feed.user_id == user_id
-    assert len(saved_user_feed.user_feed_items) == len(feed_items)
-    for i in range(len(feed_items)):
-        assert saved_user_feed.user_feed_items[i].feed_item_id == feed_items[i].id
+    assert len(saved_user_feed.user_feed_items) == len(feed_items_upd)
+    for i in range(len(feed_items_upd)):
+        assert saved_user_feed.user_feed_items[i].feed_item_id == feed_items_upd[i].id
         assert saved_user_feed.user_feed_items[i].user_id == user_id

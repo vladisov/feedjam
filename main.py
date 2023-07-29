@@ -1,5 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException
-from model.schema.feed_schema import RunSchema, SubscriptionCreate, SubscriptionSchema, UserFeedItemSchema, UserFeedSchema
+from model.schema.feed_schema import RunSchema, SubscriptionCreate, SubscriptionCreateAPI, SubscriptionSchema, UserFeedSchema
 from model.schema.user_schema import UserCreate, UserSchema
 from repository.run_storage import RunStorage
 from repository.user_storage import UserStorage
@@ -54,7 +54,7 @@ async def get_feed(user_id: int,
 
 
 @app.post("/subscribe")
-async def subscribe(subscription: SubscriptionCreate,
+async def subscribe(subscription: SubscriptionCreateAPI,
                     subscription_service: SubscriptionService =
                     Depends(get_subscription_service)) -> dict:
 

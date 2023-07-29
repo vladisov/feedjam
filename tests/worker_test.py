@@ -1,7 +1,8 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from model.schema.feed_schema import SubscriptionUpdate
-from tasks.worker import do_run, schedule_run
+from tasks.worker import do_run, generate_user_view, schedule_run
+from utils import config
 
 
 @pytest.fixture

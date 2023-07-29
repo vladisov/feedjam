@@ -104,23 +104,24 @@ class UserFeedItem(Base):
 class FeedItem(Base):
     __tablename__ = "feed_items"
     id = Column(Integer, primary_key=True)
-    source_id = Column(Integer, ForeignKey("sources.id"))
+    # source_id = Column(Integer, ForeignKey("sources.id"))
     title = Column(String,)
     link = Column(String,)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(),
                         onupdate=func.now())
     published = Column(DateTime, server_default=func.now())
-    hn_id = Column(String,)
+    local_id = Column(String,)
     description = Column(String,)
     comments_link = Column(String,)
     article_url = Column(String,)
     comments_url = Column(String,)
-    points = Column(Integer,)
+    points = Column(Integer, server_default="0")
+    views = Column(Integer, server_default="0")
     num_comments = Column(Integer,)
     summary = Column(String,)
 
-    source = relationship("Source", back_populates="feed_items")
+    # source = relationship("Source", back_populates="feed_items")
     feeds = relationship(
         "Feed",
         secondary=feed_feeditem_association,
@@ -154,7 +155,7 @@ class Source(Base):
     is_active = Column(Boolean, default=True)
 
     subscriptions = relationship("Subscription", back_populates="source")
-    feed_items = relationship("FeedItem", back_populates="source")
+    # feed_items = relationship("FeedItem", back_populates="source")
     feeds = relationship("Feed", back_populates="source")
 
 

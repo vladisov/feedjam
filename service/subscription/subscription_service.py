@@ -1,7 +1,7 @@
 
 from typing import List
 
-from model.schema.feed_schema import SourceCreate, SubscriptionCreate, SubscriptionSchema
+from model.schema.feed_schema import SourceCreate, SubscriptionCreate, SubscriptionCreateAPI, SubscriptionSchema
 from repository.feed_storage import FeedStorage
 from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
@@ -20,7 +20,7 @@ class SubscriptionService:
         self.source_storage = source_storage
         self.logger = get_logger(__name__)
 
-    def add_subscription(self, subscription_create: SubscriptionCreate) -> SubscriptionSchema:
+    def add_subscription(self, subscription_create: SubscriptionCreateAPI) -> SubscriptionSchema:
         # Prepare the source based on the resource_url from the incoming subscription
         source_name = parse_name(subscription_create.resource_url)
         source_create = SourceCreate(
@@ -30,11 +30,12 @@ class SubscriptionService:
         source = self.source_storage.create_source(source_create)
 
         # Set source_id in the subscription object
-        subscription_create.source_id = source.id
+        subscription_schema = SubscriptionCreate(**subscription_create.dict())
+        subscription_schema.source_id = source.id
 
         # Add the subscription
         created_subscription = self.subscription_storage.create_subscription(
-            subscription_create)
+            subscription_schema)
 
         self.logger.debug(f"Created subscription: {created_subscription}")
 

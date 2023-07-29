@@ -2,12 +2,15 @@
 from typing import Callable, List
 from model.schema.feed_schema import FeedItemCreate, SourceBase, SourceSchema
 
-from service.subscription.hn_parser import parse_hn_feed_item
+from service.subscription.hn_parser import parse_hn_feed
+from service.subscription.telegram_parser import parse_telegram_feed
 
 
 def get_parser(source: SourceBase) -> Callable[[SourceSchema], List[FeedItemCreate]] | None:
     if 'hackernews' in source.name:
-        return parse_hn_feed_item
+        return parse_hn_feed
+    if 'telegram' in source.name or "t.me" in source.resource_url:
+        return parse_telegram_feed
     return None
 
 

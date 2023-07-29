@@ -1,3 +1,7 @@
 .vscode
 feedenv
 __pycache__
+web/.next
+web/node_modules
+*.log
+sqlite_feedjam.db

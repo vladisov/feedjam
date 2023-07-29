@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock
 
-from service.subscription.hn_parser import parse_hn_feed_item
+from service.subscription.hn_parser import parse_hn_feed
 from service.subscription.source_parser_strategy import get_parser, parse_name
 
 
@@ -13,11 +13,12 @@ def source_mock():
 def test_get_parser_returns_hackernews_parser(source_mock):
     source_mock.name = 'hackernews'
     result = get_parser(source_mock)
-    assert result == parse_hn_feed_item
+    assert result == parse_hn_feed
 
 
 def test_get_parser_returns_none(source_mock):
     source_mock.name = 'lol'
+    source_mock.resource_url = 'lol'
     result = get_parser(source_mock)
     assert result is None
 

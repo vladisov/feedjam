@@ -5,7 +5,7 @@ import feedparser
 from model.schema.feed_schema import FeedItemCreate, SourceSchema
 
 
-def parse_hn_feed_item(source: SourceSchema) -> List[FeedItemCreate]:
+def parse_hn_feed(source: SourceSchema) -> List[FeedItemCreate]:
     feed = feedparser.parse(source.resource_url)
     items = list(map(lambda item: _crete_hn_feed_item(
         item, source), feed.entries))
@@ -13,7 +13,7 @@ def parse_hn_feed_item(source: SourceSchema) -> List[FeedItemCreate]:
 
 
 def _crete_hn_feed_item(item, source: SourceSchema) -> FeedItemCreate:
-    hn_id = item.id
+    local_id = item.id
     title = item.title
     published = datetime(*item.published_parsed[:6])
     comments = item.comments
@@ -42,7 +42,7 @@ def _crete_hn_feed_item(item, source: SourceSchema) -> FeedItemCreate:
     return FeedItemCreate(source_id=source.id,
                           title=title,
                           link=link,
-                          hn_id=hn_id,
+                          local_id=local_id,
                           description=summary,
                           points=points,
                           comments_link=comments,

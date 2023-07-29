@@ -4,6 +4,7 @@ from datetime import datetime
 
 UserFeedItemCreateRef = ForwardRef('UserFeedItemCreate')
 UserFeedItemSchemaRef = ForwardRef('UserFeedItemSchema')
+FeedItemSchemaRef = ForwardRef('FeedItemSchema')
 
 
 class FeedBase(BaseModel):
@@ -22,6 +23,7 @@ class FeedSchema(FeedBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    feed_items: Optional[List[FeedItemSchemaRef]] = []  # type: ignore
 
     class Config:
         orm_mode = True
@@ -29,18 +31,18 @@ class FeedSchema(FeedBase):
 
 class FeedItemBase(BaseModel):
     id: Optional[int] = None
-    source_id: int
     title: str
     link: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     published: Optional[datetime] = None
-    hn_id: str
+    local_id: Optional[str] = None
     description: str
-    comments_link: str
-    article_url: str
-    comments_url: str
-    points: int
+    comments_link: Optional[str] = None
+    article_url: Optional[str] = None
+    comments_url: Optional[str] = None
+    points: Optional[int] = None
+    views: Optional[int] = None
     num_comments: int
     summary: Optional[str] = None
 
@@ -80,7 +82,7 @@ class UserFeedSchema(UserFeedBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    user_feed_items: List[UserFeedItemCreateRef]  # type: ignore
+    user_feed_items: List[UserFeedItemSchemaRef]  # type: ignore
 
     class Config:
         orm_mode = True
@@ -92,6 +94,9 @@ class StateBase(BaseModel):
     star: Optional[bool] = None
     like: Optional[bool] = None
     dislike: Optional[bool] = None
+
+    class Config:
+        orm_mode = True
 
 
 class UserFeedItemBase(BaseModel):
@@ -189,12 +194,17 @@ class SourceSchema(SourceBase):
 
 class SubscriptionBase(BaseModel):
     is_active: Optional[bool] = True
-    source_id: Optional[int] = None
+
+
+class SubscriptionCreateAPI(SubscriptionBase):
+    resource_url: str
+    user_id: int
 
 
 class SubscriptionCreate(SubscriptionBase):
     resource_url: str
     user_id: int
+    source_id: Optional[int] = None
 
 
 class SubscriptionUpdate(SubscriptionBase):
@@ -208,6 +218,7 @@ class SubscriptionSchema(SubscriptionBase):
     source: SourceSchema
     last_run: Optional[datetime] = None
     runs: Optional[List[RunSchema]]
+    source_id: Optional[int] = None
 
     class Config:
         orm_mode = True
@@ -216,3 +227,4 @@ class SubscriptionSchema(SubscriptionBase):
 FeedItemSchema.update_forward_refs()
 UserFeedCreate.update_forward_refs()
 UserFeedSchema.update_forward_refs()
+FeedSchema.update_forward_refs()
