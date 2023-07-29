@@ -1,0 +1,6 @@
+README.md
+setup.py
+feedjam.egg-info/PKG-INFO
+feedjam.egg-info/SOURCES.txt
+feedjam.egg-info/dependency_links.txt
+feedjam.egg-info/top_level.txt
