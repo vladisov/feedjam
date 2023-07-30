@@ -30,9 +30,15 @@ def test_schedule_run(mock_subscription_storage, mock_run_storage, mock_do_run, 
 @patch("tasks.worker.SubscriptionStorage")
 @patch("tasks.worker.FeedService")
 @patch("tasks.worker.RunStorage")
+@patch("tasks.worker.SourceStorage")
 @patch("tasks.worker.DataExtractor")
-def test_do_run(mock_data_extractor, mock_run_storage, mock_feed_service, mock_subscription_storage,
-                mock_feed_storage, mock_db_session):
+def test_do_run(mock_data_extractor,
+                mock_source_storage,
+                mock_run_storage,
+                mock_feed_service,
+                mock_subscription_storage,
+                mock_feed_storage,
+                mock_db_session):
     mock_run = Mock(id=1, subscription_id=2)
     mock_run_storage.return_value.get_run.return_value = mock_run
 
@@ -43,13 +49,17 @@ def test_do_run(mock_data_extractor, mock_run_storage, mock_feed_service, mock_s
     mock_run_storage.return_value.get_run.assert_called_once_with(1)
     mock_run_storage.return_value.update_run_status.assert_any_call(
         1, "running")
+
     mock_feed_service.assert_called_once_with(
-        mock_feed_storage.return_value, mock_subscription_storage.return_value, mock_data_extractor.return_value)
+        mock_feed_storage.return_value,
+        mock_subscription_storage.return_value,
+        mock_source_storage.return_value,
+        mock_data_extractor.return_value)
     mock_feed_service.return_value.fetch_and_save_feed_items.assert_called_once_with(
         2)
     mock_run_storage.return_value.update_run_status.assert_any_call(
         1, "success")
     assert mock_subscription_storage.return_value.update_subscription.call_count == 1
-    args, kwargs = mock_subscription_storage.return_value.update_subscription.call_args
+    args, _ = mock_subscription_storage.return_value.update_subscription.call_args
     assert args[1] == 2
     assert isinstance(args[0], SubscriptionUpdate)
