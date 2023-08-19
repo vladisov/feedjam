@@ -52,10 +52,10 @@ async def get_feed(user_id: int,
 @app.post("/subscribe")
 async def subscribe(subscription: SubscriptionCreateAPI,
                     subscription_service: SubscriptionService =
-                    Depends(get_subscription_service)) -> dict:
+                    Depends(get_subscription_service)) -> SubscriptionSchema:
 
     subscription_schema = subscription_service.add_subscription(subscription)
-    return {"message": "Subscribed successfully!", "data": subscription_schema}
+    return subscription_schema
 
 
 @app.get("/subscriptions", response_model=list[SubscriptionSchema],)

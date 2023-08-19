@@ -1,4 +1,3 @@
-from datetime import datetime
 import os
 
 from celery import Celery
@@ -25,11 +24,19 @@ celery.conf.result_backend = os.environ.get(  # type: ignore
 celery.conf.beat_schedule = {
     'feed_fetcher': {
         'task': 'schedule_run',
+<<<<<<< Updated upstream
         'schedule': crontab(minute="0"),  # execute at the start of every hour
     },
     'generate-views': {
         'task': 'generate_views',
         'schedule': crontab(minute="0"),  # execute at the start of every hour
+=======
+        'schedule': crontab(minute="*/15"),  # execute every 5 minutes
+    },
+    'generate-views': {
+        'task': 'generate_views',
+        'schedule': crontab(minute="*/15"),  # execute every 5 minutes
+>>>>>>> Stashed changes
     },
 }
 
@@ -37,7 +44,7 @@ logger = celery.log.get_default_logger()
 
 
 @celery.task(name="schedule_run")
-def schedule_run():
+def schedule_run() -> bool:
     db: Session = next(get_db())  # type: ignore
 
     subscription_storage = SubscriptionStorage(db)
@@ -54,7 +61,7 @@ def schedule_run():
 
 
 @celery.task(name="do_run")
-def do_run(run_id: int):
+def do_run(run_id: int) -> bool:
     db = next(get_db())
 
     feed_storage = FeedStorage(db)
@@ -74,9 +81,15 @@ def do_run(run_id: int):
         feed_service.fetch_and_save_feed_items(run.subscription_id)
         run_storage.update_run_status(run_id, "success")
         subscription_storage.update_subscription(
+<<<<<<< Updated upstream
             SubscriptionUpdate(last_run=datetime.now()), run.subscription_id)
     except Exception as e:
         logger.error(e)
+=======
+            SubscriptionUpdate(), run.subscription_id)
+    except Exception as ex:
+        logger.error("Error while running task: %s", ex)
+>>>>>>> Stashed changes
         run_storage.update_run_status(run_id, "failed")
         return False
 
@@ -124,8 +137,8 @@ def generate_user_view(user_id: int, run_id: int):
         # run_storage.update_run_status(run_id, "success")
         # subscription_storage.update_subscription(
         #     SubscriptionUpdate(last_run=datetime.now()), run.subscription_id)
-    except Exception as e:
-        logger.error(e)
+    except Exception as ex:
+        logger.error(ex)
         # run_storage.update_run_status(run_id, "failed")
         return False
 

@@ -41,6 +41,7 @@ def _create_telegram_feed_item(item, source: SourceSchema) -> FeedItemCreate:
         comments_url=None,
         article_url=link,
         num_comments=0,
+        local_id=link,
         published=published
     )
 

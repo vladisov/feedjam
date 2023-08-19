@@ -44,8 +44,8 @@ class FeedService:
         self.feed_storage.save_feed_items(source, items)
         return items
 
-    def get_feed_items(self, source_id: int, skip: int = 0, limit: int = 100) -> List[FeedItemSchema]:
-        return self.feed_storage.get_feed_items(source_id, skip, limit)
+    def get_feed_items(self, user_id: int, skip: int = 0, limit: int = 100) -> List[FeedItemSchema]:
+        return self.feed_storage.get_feed_items_by_user(user_id, skip, limit)
 
     def get_user_feed(self, user_id: int) -> UserFeedSchema:
         return self.feed_storage.get_user_feed(user_id)
