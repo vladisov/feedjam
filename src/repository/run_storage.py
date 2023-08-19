@@ -1,7 +1,7 @@
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from model.subscription import Run, Subscription
 from model.schema.feed_schema import RunCreate, RunUpdate, RunSchema
-from typing import List, Optional
 
 
 class RunStorage:

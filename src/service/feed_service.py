@@ -1,6 +1,5 @@
 from typing import List, Optional
 from fastapi import HTTPException
-from repository.source_storage import SourceStorage
 from service.data_extractor import DataExtractor
 from service.parser.source_parser_strategy import get_parser
 from model.schema.feed_schema import FeedItemCreate, FeedItemSchema, StateBase, UserFeedCreate

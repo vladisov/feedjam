@@ -16,7 +16,7 @@ class SubscriptionService:
     def __init__(self, feed_storage: FeedStorage,
                  subscription_storage: SubscriptionStorage,
                  source_storage: SourceStorage):
-        self.running_subscriptions = dict()
+        self.running_subscriptions = {}
         self.feed_storage = feed_storage
         self.subscription_storage = subscription_storage
         self.source_storage = source_storage

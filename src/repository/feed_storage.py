@@ -122,6 +122,5 @@ class FeedStorage:
             user_feed_item.state.read = True
             self.db.commit()
             return True
-        else:
-            logger.info("User feed item %s not found.", user_feed_item_id)
-            return False
+        logger.info("User feed item %s not found.", user_feed_item_id)
+        return False

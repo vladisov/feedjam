@@ -1,11 +1,8 @@
-
-import feedparser
-
 from unittest.mock import patch
-from model.schema.feed_schema import SubscriptionCreateAPI, SubscriptionSchema
-from model.subscription import Subscription
+import feedparser
 from __tests__.test_app import override_get_db
 from __tests__.test_app import client
+from model.schema.feed_schema import SubscriptionCreateAPI, SubscriptionSchema
 from service.data_extractor import DataExtractor
 from service.feed_service import FeedService
 from repository.source_storage import SourceStorage
@@ -74,11 +71,13 @@ def test_generate_and_save_user_feed(cleanup):
 
     # Check that the saved feed matches the generated feed
     feed_items.sort(key=lambda x: x.id)
+    saved_user_feed.user_feed_items.sort(key=lambda x: x.feed_item_id)
+
     assert saved_user_feed.user_id == user_id
     assert len(saved_user_feed.user_feed_items) == len(feed_items)
-    for i in range(len(feed_items)):
-        assert saved_user_feed.user_feed_items[i].feed_item_id == feed_items[i].id
-        assert saved_user_feed.user_feed_items[i].user_id == user_id
+    for i, item in enumerate(saved_user_feed.user_feed_items):
+        assert item.feed_item_id == feed_items[i].id
+        assert item.user_id == user_id
 
     _, _ = _create_hn_feed_items(
         service, user_id, filename="src/__tests__/test_data/hn_best_example.xml")
@@ -90,8 +89,10 @@ def test_generate_and_save_user_feed(cleanup):
 
     # Check that the saved feed matches the generated feed
     feed_items_upd.sort(key=lambda x: x.id)
+    saved_user_feed.user_feed_items.sort(key=lambda x: x.feed_item_id)
+
     assert saved_user_feed.user_id == user_id
     assert len(saved_user_feed.user_feed_items) == len(feed_items_upd)
-    for i in range(len(feed_items_upd)):
-        assert saved_user_feed.user_feed_items[i].feed_item_id == feed_items_upd[i].id
-        assert saved_user_feed.user_feed_items[i].user_id == user_id
+    for i, item in enumerate(saved_user_feed.user_feed_items):
+        assert item.feed_item_id == feed_items_upd[i].id
+        assert item.user_id == user_id

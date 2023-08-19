@@ -19,15 +19,17 @@ celery.conf.broker_url = os.environ.get(  # type: ignore
     "CELERY_BROKER_URL", "redis://localhost:6379")
 celery.conf.result_backend = os.environ.get(  # type: ignore
     "CELERY_RESULT_BACKEND", "redis://localhost:6379")
+FETCHER_INTERVAL = os.environ.get('FETCHER_INTERVAL', '*/30')
+
 
 celery.conf.beat_schedule = {
     'feed_fetcher': {
         'task': 'schedule_run',
-        'schedule': crontab(minute="*/15"),  # execute every 5 minutes
+        'schedule': crontab(minute=FETCHER_INTERVAL),
     },
     'generate-views': {
         'task': 'generate_views',
-        'schedule': crontab(minute="*/15"),  # execute every 5 minutes
+        'schedule': crontab(minute=FETCHER_INTERVAL),
     },
 }
 
