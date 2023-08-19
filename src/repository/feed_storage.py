@@ -1,4 +1,3 @@
-from utils.logger import get_logger
 from typing import List, Optional
 
 from sqlalchemy import and_
@@ -11,6 +10,8 @@ from model.schema.feed_schema import UserFeedCreate, UserFeedSchema
 from model.user_feed import UserFeed, UserFeedItem, UserFeedItemState
 from model.subscription import Subscription
 
+from utils.logger import get_logger
+
 logger = get_logger(__name__)
 
 
@@ -22,8 +23,8 @@ class FeedStorage:
         existing_item = self.db.query(FeedItem).filter(
             FeedItem.link == feed_item_create.link).first()
         if existing_item:
-            logger.info(
-                f'Feed item {feed_item_create.link} already exists, skipping.')
+            logger.info("Feed item %s already exists, skipping.",
+                        feed_item_create.link)
             return
 
         feed_item = FeedItem(**feed_item_create.dict())
@@ -45,7 +46,7 @@ class FeedStorage:
             user_feed.is_active = False
             self.db.commit()
         else:
-            logger.info(f'User feed {user_feed_id} not found.')
+            logger.info("User feed %s not found.", user_feed_id)
 
     def save_feed_items(self,
                         source: SourceSchema,
@@ -66,20 +67,19 @@ class FeedStorage:
 
     def save_user_feed(self, user_feed: UserFeedCreate):
         new_user_feed = UserFeed(
-            user_id=user_feed.user_id, is_active=user_feed.is_active, user_feed_items=[])
+            user_id=user_feed.user_id, is_active=user_feed.is_active, user_feed_items=[]
+        )
 
         self.db.add(new_user_feed)
         self.db.flush()
 
         for user_feed_item in user_feed.user_feed_items:
-            new_user_feed_item = UserFeedItem(
-                user_id=user_feed.user_id,
-                feed_item_id=user_feed_item.feed_item_id,
-                state=UserFeedItemState(hide=False, read=False, star=False,
-                                        like=False, dislike=False)
-            )
-
-            new_user_feed_item.user_feed_id = new_user_feed.id
+            new_user_feed_item_data = user_feed_item.dict()
+            new_user_feed_item_data.update({
+                'user_feed_id': new_user_feed.id,
+                'state': UserFeedItemState(**user_feed_item.state.dict())
+            })
+            new_user_feed_item = UserFeedItem(**new_user_feed_item_data)
             self.db.add(new_user_feed_item)
 
         self.db.commit()
@@ -91,8 +91,7 @@ class FeedStorage:
 
         if user_feed:
             return UserFeedSchema.from_orm(user_feed)
-        else:
-            raise Exception("No feed found for this user.")
+        raise Exception("No feed found for this user.")
 
     def get_feed_items_by_user(self, user_id: int, skip: int = 0, limit: int = 100) -> List[FeedItemSchema]:
         subscriptions = self.db.query(Subscription).filter(
@@ -124,5 +123,5 @@ class FeedStorage:
             self.db.commit()
             return True
         else:
-            logger.info(f'User feed item {user_feed_item_id} not found.')
-        return False
+            logger.info("User feed item %s not found.", user_feed_item_id)
+            return False

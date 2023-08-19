@@ -3,16 +3,15 @@ import os
 from celery import Celery
 from celery.schedules import crontab
 from sqlmodel import Session
-from repository.user_storage import UserStorage
+from model.schema.feed_schema import RunCreate, SubscriptionUpdate
 from service.data_extractor import DataExtractor
 from service.feed_service import FeedService
-from model.schema.feed_schema import RunCreate, SubscriptionUpdate
-
+from repository.user_storage import UserStorage
 from repository.db import get_db
 from repository.feed_storage import FeedStorage
 from repository.run_storage import RunStorage
 from repository.subscription_storage import SubscriptionStorage
-from src.repository.source_storage import SourceStorage
+from repository.source_storage import SourceStorage
 from utils import config
 
 celery = Celery(__name__)
@@ -95,13 +94,13 @@ def generate_views():
     for user in users_to_run:
         # new_run = run_storage.create_run(
         #     RunCreate(subscription_id=subscription.id, status="pending"))
-        generate_user_view.delay(user.id, 0)
+        generate_user_view.delay(user.id)
 
     return True
 
 
 @celery.task(name="generate_user_view")
-def generate_user_view(user_id: int, run_id: int):
+def generate_user_view(user_id: int):
     db = next(get_db())
 
     feed_storage = FeedStorage(db)

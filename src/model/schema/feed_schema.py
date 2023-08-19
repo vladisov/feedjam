@@ -54,8 +54,6 @@ class FeedItemCreate(FeedItemBase):
 class FeedItemUpdate(FeedItemBase):
     id: int
 
-    pass
-
 
 class FeedItemSchema(FeedItemBase):
     id: int
@@ -106,7 +104,11 @@ class UserFeedItemBase(BaseModel):
 
 
 class UserFeedItemCreate(UserFeedItemBase):
-    pass
+    description: str
+    article_url: Optional[str] = None
+    comments_url: Optional[str] = None
+    points: Optional[int] = None
+    views: Optional[int] = None
 
 
 class UserFeedItemUpdate(UserFeedItemBase):
@@ -119,6 +121,11 @@ class UserFeedItemSchema(UserFeedItemBase):
     updated_at: datetime
     summary: Optional[str] = None
     source_name: Optional[str] = None
+    description: str
+    article_url: Optional[str] = None
+    comments_url: Optional[str] = None
+    points: Optional[int] = None
+    views: Optional[int] = None
 
     class Config:
         orm_mode = True

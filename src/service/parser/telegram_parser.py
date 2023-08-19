@@ -19,8 +19,8 @@ def parse_telegram_feed(source: SourceSchema) -> List[FeedItemCreate]:
         try:
             feed_item = _create_telegram_feed_item(item, source)
             feed_items.append(feed_item)
-        except Exception as e:
-            logger.error(f'Error while parsing feed item: {e}')
+        except Exception as ex:
+            logger.error(f'Error while parsing feed item: {ex}')
     return feed_items
 
 

@@ -8,6 +8,8 @@ from repository.subscription_storage import SubscriptionStorage
 from service.parser.source_parser_strategy import parse_name
 from utils.logger import get_logger
 
+logger = get_logger(__name__)
+
 
 class SubscriptionService:
 
@@ -18,7 +20,6 @@ class SubscriptionService:
         self.feed_storage = feed_storage
         self.subscription_storage = subscription_storage
         self.source_storage = source_storage
-        self.logger = get_logger(__name__)
 
     def add_subscription(self, subscription_create: SubscriptionCreateAPI) -> SubscriptionSchema:
         # Prepare the source based on the resource_url from the incoming subscription
@@ -37,7 +38,7 @@ class SubscriptionService:
         created_subscription = self.subscription_storage.create_subscription(
             subscription_schema)
 
-        self.logger.debug(f"Created subscription: {created_subscription}")
+        logger.debug("Created subscription: %s", created_subscription)
 
         return created_subscription
 
