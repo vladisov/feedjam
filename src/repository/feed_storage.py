@@ -2,26 +2,15 @@ from utils.logger import get_logger
 from typing import List, Optional
 
 from sqlalchemy import and_
-from model.feed import Feed, FeedItem
-from model.schema.feed_schema import FeedItemCreate, FeedItemSchema, SourceSchema
-from model.schema.feed_schema import UserFeedCreate, UserFeedSchema
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 
-<<<<<<< Updated upstream
-=======
 from model.feed import Feed, FeedItem, feed_feeditem_association
 from model.schema.feed_schema import FeedItemCreate, FeedItemSchema, SourceSchema
 from model.schema.feed_schema import UserFeedCreate, UserFeedSchema
->>>>>>> Stashed changes
 from model.user_feed import UserFeed, UserFeedItem, UserFeedItemState
 from model.subscription import Subscription
 
-<<<<<<< Updated upstream
-=======
-from utils.logger import get_logger
-
->>>>>>> Stashed changes
 logger = get_logger(__name__)
 
 

@@ -1,21 +1,16 @@
-from unittest.mock import patch
-<<<<<<<< Updated upstream:src/tests/feed_service_test.py
-from model.source import Source
-from repository.source_storage import SourceStorage
-========
+
 import feedparser
+
+from unittest.mock import patch
+from model.schema.feed_schema import SubscriptionCreateAPI, SubscriptionSchema
+from model.subscription import Subscription
 from __tests__.test_app import override_get_db
 from __tests__.test_app import client
-from model.schema.feed_schema import SubscriptionCreateAPI, SubscriptionSchema
->>>>>>>> Stashed changes:src/__tests__/feed_service_test.py
 from service.data_extractor import DataExtractor
 from service.feed_service import FeedService
-from model.subscription import Subscription
-
+from repository.source_storage import SourceStorage
 from repository.feed_storage import FeedStorage
 from repository.subscription_storage import SubscriptionStorage
-from tests.test_app import override_get_db
-import feedparser
 
 
 def _create_subscription(subscription: SubscriptionCreateAPI):
