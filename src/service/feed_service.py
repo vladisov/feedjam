@@ -2,12 +2,12 @@ from typing import List, Optional
 from fastapi import HTTPException
 from repository.source_storage import SourceStorage
 from service.data_extractor import DataExtractor
+from service.parser.source_parser_strategy import get_parser
 from model.schema.feed_schema import FeedItemCreate, FeedItemSchema, StateBase, UserFeedCreate
 from model.schema.feed_schema import UserFeedItemCreate, UserFeedSchema
-
+from repository.source_storage import SourceStorage
 from repository.feed_storage import FeedStorage
 from repository.subscription_storage import SubscriptionStorage
-from service.parser.source_parser_strategy import get_parser
 
 
 class FeedService:
@@ -44,8 +44,8 @@ class FeedService:
         self.feed_storage.save_feed_items(source, items)
         return items
 
-    def get_feed_items(self, source_id: int, skip: int = 0, limit: int = 100) -> List[FeedItemSchema]:
-        return self.feed_storage.get_feed_items(source_id, skip, limit)
+    def get_feed_items(self, user_id: int, skip: int = 0, limit: int = 100) -> List[FeedItemSchema]:
+        return self.feed_storage.get_feed_items_by_user(user_id, skip, limit)
 
     def get_user_feed(self, user_id: int) -> UserFeedSchema:
         return self.feed_storage.get_user_feed(user_id)

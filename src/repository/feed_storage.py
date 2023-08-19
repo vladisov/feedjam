@@ -4,10 +4,11 @@ from sqlalchemy import and_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 
-from model.feed import Feed, FeedItem
-from model.schema.feed_schema import FeedItemCreate, FeedItemSchema, SourceSchema, StateBase
+from model.feed import Feed, FeedItem, feed_feeditem_association
+from model.schema.feed_schema import FeedItemCreate, FeedItemSchema, SourceSchema
 from model.schema.feed_schema import UserFeedCreate, UserFeedSchema
 from model.user_feed import UserFeed, UserFeedItem, UserFeedItemState
+from model.subscription import Subscription
 
 from utils.logger import get_logger
 from utils.utils import to_dict
@@ -93,15 +94,25 @@ class FeedStorage:
             return UserFeedSchema.from_orm(user_feed)
         raise Exception("No feed found for this user.")
 
-    def get_feed_items(self, source_id: int, skip: int = 0, limit: int = 100) -> List[FeedItemSchema]:
-        feed: Optional[Feed] = self.db.query(Feed).filter(
-            Feed.source_id == source_id).first()
+    def get_feed_items_by_user(self, user_id: int, skip: int = 0, limit: int = 100) -> List[FeedItemSchema]:
+        subscriptions = self.db.query(Subscription).filter(
+            Subscription.user_id == user_id).all()
+        source_ids = [subscription.source_id for subscription in subscriptions]
 
-        if feed is None:
-            return []
+        feed_items = self.get_feed_items_by_source_ids(source_ids, skip, limit)
+        return feed_items
 
-        feed_items = self.db.query(FeedItem).filter(
-            FeedItem.feeds.contains(feed)).offset(skip).limit(limit).all()
+    def get_feed_items_by_source_ids(self, source_ids: List[int], skip: int = 0,
+                                     limit: int = 100) -> List[FeedItemSchema]:
+        # feed_items = self.db.query(FeedItem).join(Feed).filter(
+        #     Feed.source_id.in_(source_ids)
+        feed_items = self.db.query(FeedItem) \
+            .join(feed_feeditem_association, FeedItem.id == feed_feeditem_association.c.feeditem_id) \
+            .join(Feed, feed_feeditem_association.c.feed_id == Feed.id) \
+            .filter(Feed.source_id.in_(source_ids)) \
+            .offset(skip) \
+            .limit(limit) \
+            .all()
 
         return feed_items
 

@@ -1,6 +1,7 @@
-from pydantic import BaseModel
 from typing import ForwardRef, Optional, List
 from datetime import datetime
+from pydantic import BaseModel
+
 
 UserFeedItemCreateRef = ForwardRef('UserFeedItemCreate')
 UserFeedItemSchemaRef = ForwardRef('UserFeedItemSchema')

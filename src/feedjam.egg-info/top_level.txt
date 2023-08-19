@@ -1,5 +1,5 @@
+__tests__
 model
 repository
 service
-tests
 utils
