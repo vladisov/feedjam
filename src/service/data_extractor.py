@@ -33,7 +33,7 @@ class DataExtractor:
         return response.choices[0].text.strip()  # type: ignore
 
     def extract_and_summarize(self, url):
-        return ""
+        return str(url)
         # try:
         #     title, text = self.get_webpage_text(url)
         #     summary = self.summarize(title, text)

@@ -1,14 +1,15 @@
 from fastapi import Depends
-from service.data_extractor import DataExtractor
 from repository.db import get_db
 from repository.run_storage import RunStorage
 from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
 from repository.user_storage import UserStorage
-from service.feed_service import FeedService
-
-from service.subscription_service import SubscriptionService
 from repository.feed_storage import FeedStorage
+
+from service.feed_service import FeedService
+from service.subscription_service import SubscriptionService
+from service.data_extractor import DataExtractor
+
 from utils import config
 
 

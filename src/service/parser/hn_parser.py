@@ -3,16 +3,17 @@ from typing import List
 from bs4 import BeautifulSoup
 import feedparser
 from model.schema.feed_schema import FeedItemCreate, SourceSchema
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def parse_hn_feed(source: SourceSchema) -> List[FeedItemCreate]:
     feed = feedparser.parse(source.resource_url)
-    items = list(map(lambda item: _crete_hn_feed_item(
-        item, source), feed.entries))
-    return items
+    return [_crete_hn_feed_item(item) for item in feed.entries]
 
 
-def _crete_hn_feed_item(item, source: SourceSchema) -> FeedItemCreate:
+def _crete_hn_feed_item(item) -> FeedItemCreate:
     local_id = item.id
     title = item.title
     published = datetime(*item.published_parsed[:6])
@@ -27,17 +28,17 @@ def _crete_hn_feed_item(item, source: SourceSchema) -> FeedItemCreate:
     try:
         soup = BeautifulSoup(summary, 'html.parser')
         p_tags = soup.find_all('p')
-        for p in p_tags:
-            if p.text.startswith('Article URL:'):
-                article_url = p.text.split(': ')[1]
-            if p.text.startswith('Points:'):
-                points = p.text.split(': ')[1]
-            if p.text.startswith('# Comments:'):
-                num_comments = p.text.split(': ')[1]
+        for p_tag in p_tags:
+            if p_tag.text.startswith('Article URL:'):
+                article_url = p_tag.text.split(': ')[1]
+            if p_tag.text.startswith('Points:'):
+                points = p_tag.text.split(': ')[1]
+            if p_tag.text.startswith('# Comments:'):
+                num_comments = p_tag.text.split(': ')[1]
             else:
-                description += p.text
-    except Exception as e:
-        print(e)
+                description += p_tag.text
+    except Exception as ex:
+        logger.error('Error while parsing feed item: %s', ex)
 
     return FeedItemCreate(
         title=title,

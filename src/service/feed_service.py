@@ -1,13 +1,13 @@
-from fastapi import HTTPException
 from typing import List, Optional
+from fastapi import HTTPException
 from repository.source_storage import SourceStorage
 from service.data_extractor import DataExtractor
+from service.parser.source_parser_strategy import get_parser
 from model.schema.feed_schema import FeedItemCreate, FeedItemSchema, StateBase, UserFeedCreate
 from model.schema.feed_schema import UserFeedItemCreate, UserFeedSchema
-
+from repository.source_storage import SourceStorage
 from repository.feed_storage import FeedStorage
 from repository.subscription_storage import SubscriptionStorage
-from service.parser.source_parser_strategy import get_parser
 
 
 class FeedService:
@@ -82,4 +82,11 @@ class FeedService:
         new_items = [
             item for item in all_items if item.id not in existing_feed_item_ids]
 
-        return [UserFeedItemCreate(feed_item_id=item.id, user_id=user_id, state=StateBase()) for item in new_items]
+        return [UserFeedItemCreate(feed_item_id=item.id,
+                                   user_id=user_id,
+                                   state=StateBase(),
+                                   description=item.description,
+                                   comments_url=item.comments_url,
+                                   article_url=item.article_url,
+                                   points=item.points,
+                                   views=item.views) for item in new_items]
