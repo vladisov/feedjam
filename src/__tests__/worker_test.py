@@ -1,5 +1,5 @@
-import pytest
 from unittest.mock import Mock, patch
+import pytest
 from model.schema.feed_schema import SubscriptionUpdate
 from tasks.worker import do_run, schedule_run
 
