@@ -7,7 +7,7 @@ from sqlalchemy.pool import StaticPool
 from model.schema.user_schema import UserSchema
 
 from repository.db import get_db
-from main import app
+from src.main import app
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"
 

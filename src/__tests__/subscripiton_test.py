@@ -3,7 +3,11 @@ import pytest
 from model.schema.feed_schema import SubscriptionSchema
 from model.schema.user_schema import UserSchema
 from repository.source_storage import SourceStorage
+<<<<<<<< HEAD:src/__tests__/subscripiton_test.py
 from __tests__.test_app import _create_user, client, override_get_db
+========
+from tests.test_app import _create_user, client, override_get_db
+>>>>>>>> main:src/tests/subscripiton_test.py
 
 
 def _create_subscription(user: UserSchema, resource_url: str):
