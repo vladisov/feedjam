@@ -1,19 +1,17 @@
-from datetime import datetime
 import os
 
 from celery import Celery
 from celery.schedules import crontab
 from sqlmodel import Session
-from repository.user_storage import UserStorage
+from model.schema.feed_schema import RunCreate, SubscriptionUpdate
 from service.data_extractor import DataExtractor
 from service.feed_service import FeedService
-from model.schema.feed_schema import RunCreate, SubscriptionUpdate
-
+from repository.user_storage import UserStorage
 from repository.db import get_db
 from repository.feed_storage import FeedStorage
 from repository.run_storage import RunStorage
 from repository.subscription_storage import SubscriptionStorage
-from src.repository.source_storage import SourceStorage
+from repository.source_storage import SourceStorage
 from utils import config
 
 celery = Celery(__name__)
@@ -21,15 +19,17 @@ celery.conf.broker_url = os.environ.get(  # type: ignore
     "CELERY_BROKER_URL", "redis://localhost:6379")
 celery.conf.result_backend = os.environ.get(  # type: ignore
     "CELERY_RESULT_BACKEND", "redis://localhost:6379")
+FETCHER_INTERVAL = os.environ.get('FETCHER_INTERVAL', '*/30')
+
 
 celery.conf.beat_schedule = {
     'feed_fetcher': {
         'task': 'schedule_run',
-        'schedule': crontab(minute="0"),  # execute at the start of every hour
+        'schedule': crontab(minute=FETCHER_INTERVAL),
     },
     'generate-views': {
         'task': 'generate_views',
-        'schedule': crontab(minute="0"),  # execute at the start of every hour
+        'schedule': crontab(minute=FETCHER_INTERVAL),
     },
 }
 
@@ -37,7 +37,7 @@ logger = celery.log.get_default_logger()
 
 
 @celery.task(name="schedule_run")
-def schedule_run():
+def schedule_run() -> bool:
     db: Session = next(get_db())  # type: ignore
 
     subscription_storage = SubscriptionStorage(db)
@@ -54,7 +54,7 @@ def schedule_run():
 
 
 @celery.task(name="do_run")
-def do_run(run_id: int):
+def do_run(run_id: int) -> bool:
     db = next(get_db())
 
     feed_storage = FeedStorage(db)
@@ -74,9 +74,9 @@ def do_run(run_id: int):
         feed_service.fetch_and_save_feed_items(run.subscription_id)
         run_storage.update_run_status(run_id, "success")
         subscription_storage.update_subscription(
-            SubscriptionUpdate(last_run=datetime.now()), run.subscription_id)
-    except Exception as e:
-        logger.error(e)
+            SubscriptionUpdate(), run.subscription_id)
+    except Exception as ex:
+        logger.error("Error while running task: %s", ex)
         run_storage.update_run_status(run_id, "failed")
         return False
 
@@ -96,13 +96,13 @@ def generate_views():
     for user in users_to_run:
         # new_run = run_storage.create_run(
         #     RunCreate(subscription_id=subscription.id, status="pending"))
-        generate_user_view.delay(user.id, 0)
+        generate_user_view.delay(user.id)
 
     return True
 
 
 @celery.task(name="generate_user_view")
-def generate_user_view(user_id: int, run_id: int):
+def generate_user_view(user_id: int):
     db = next(get_db())
 
     feed_storage = FeedStorage(db)
@@ -124,8 +124,8 @@ def generate_user_view(user_id: int, run_id: int):
         # run_storage.update_run_status(run_id, "success")
         # subscription_storage.update_subscription(
         #     SubscriptionUpdate(last_run=datetime.now()), run.subscription_id)
-    except Exception as e:
-        logger.error(e)
+    except Exception as ex:
+        logger.error(ex)
         # run_storage.update_run_status(run_id, "failed")
         return False
 

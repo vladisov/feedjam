@@ -3,7 +3,7 @@ import pytest
 from model.schema.feed_schema import SubscriptionSchema
 from model.schema.user_schema import UserSchema
 from repository.source_storage import SourceStorage
-from tests.test_app import _create_user, client, override_get_db
+from __tests__.test_app import _create_user, client, override_get_db
 
 
 def _create_subscription(user: UserSchema, resource_url: str):
@@ -14,7 +14,7 @@ def _create_subscription(user: UserSchema, resource_url: str):
             "resource_url": resource_url,
         },
     )
-    return SubscriptionSchema(**response.json()["data"])
+    return SubscriptionSchema(**response.json())
 
 
 def test_create_subscription_with_new_source(cleanup):

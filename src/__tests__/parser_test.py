@@ -1,5 +1,5 @@
-import pytest
 from unittest.mock import Mock
+import pytest
 
 from service.parser.hn_parser import parse_hn_feed
 from service.parser.source_parser_strategy import get_parser, parse_name

@@ -2,10 +2,8 @@
 from datetime import timedelta
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from model.subscription import Subscription
 from sqlalchemy import or_, func
-
-
+from model.subscription import Subscription
 from model.schema.feed_schema import SubscriptionCreate, SubscriptionSchema, SubscriptionUpdate
 
 

@@ -2,7 +2,7 @@ import axios from "axios";
 import Link from "next/link";
 import { format } from "date-fns";
 
-const SubscriptionItem = ({ subscription }) => (
+const SubscriptionItem = ({ subscription }: { subscription: any }) => (
   <div className="bg-white rounded-md p-6 mb-4 shadow">
     <p className="font-semibold">Subscription ID: {subscription.id}</p>
     <p className="font-semibold">Source ID: {subscription.source_id}</p>
@@ -24,28 +24,28 @@ const SubscriptionItem = ({ subscription }) => (
   </div>
 );
 
-const Subscriptions = ({ subscriptions }) => (
+const Subscriptions = ({ subscriptions }: { subscriptions: any }) => (
   <div className="max-w-2xl mx-auto px-4">
     <h1 className="text-3xl font-bold mb-6">Your Subscriptions</h1>
-    {subscriptions.map((subscription) => (
+    {subscriptions.map((subscription: any) => (
       <SubscriptionItem key={subscription.id} subscription={subscription} />
     ))}
   </div>
 );
 
-export async function getServerSideProps(context) {
-  const user_id = 1;
+// export async function getServerSideProps(context) {
+//   const user_id = 1;
 
-  const res = await axios.get(
-    `http://localhost:8004/subscriptions?user_id=${user_id}`
-  );
-  const subscriptions = res.data;
+//   const res = await axios.get(
+//     `http://localhost:8004/subscriptions?user_id=${user_id}`
+//   );
+//   const subscriptions = res.data;
 
-  return {
-    props: {
-      subscriptions,
-    },
-  };
-}
+//   return {
+//     props: {
+//       subscriptions,
+//     },
+//   };
+// }
 
 export default Subscriptions;

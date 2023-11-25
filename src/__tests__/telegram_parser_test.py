@@ -10,7 +10,7 @@ def test_parse_telegram_feed(mocker):
     source = SourceSchema(id=1, name="telegram",
                           resource_url="https://t.me/s/redakciya_channel",
                           created_at=datetime.now(), is_active=True)
-    with open('tests/test_data/page_example.html', 'r') as file:
+    with open('src/__tests__/test_data/page_example.html', 'r', encoding='utf-8') as file:
         test_html = file.read()
 
     mock_requests = mocker.patch(

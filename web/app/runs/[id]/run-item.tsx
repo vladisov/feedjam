@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 
-const RunItem = ({ run }) => (
+const RunItem = ({ run }: { run: any }) => (
   <div className="bg-white rounded-md p-6 mb-4 shadow">
     <h2 className="font-bold text-2xl mb-2">{run.id}</h2>
     <p className="font-semibold">Status: {run.status}</p>

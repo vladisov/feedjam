@@ -1,13 +1,13 @@
 from fastapi import Depends, FastAPI, HTTPException
 from model.schema.feed_schema import RunSchema, SubscriptionCreateAPI, SubscriptionSchema, UserFeedSchema
 from model.schema.user_schema import UserCreate, UserSchema
+from repository.db import engine, Base
 from repository.run_storage import RunStorage
 from repository.user_storage import UserStorage
 from service.feed_service import FeedService
 from service.subscription_service import SubscriptionService
 from utils.dependencies import get_feed_service, get_run_storage, get_subscription_service
 from utils.dependencies import get_user_storage
-from repository.db import engine, Base
 from utils.logger import get_logger
 
 
@@ -52,10 +52,10 @@ async def get_feed(user_id: int,
 @app.post("/subscribe")
 async def subscribe(subscription: SubscriptionCreateAPI,
                     subscription_service: SubscriptionService =
-                    Depends(get_subscription_service)) -> dict:
+                    Depends(get_subscription_service)) -> SubscriptionSchema:
 
     subscription_schema = subscription_service.add_subscription(subscription)
-    return {"message": "Subscribed successfully!", "data": subscription_schema}
+    return subscription_schema
 
 
 @app.get("/subscriptions", response_model=list[SubscriptionSchema],)

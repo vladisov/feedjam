@@ -1,7 +1,7 @@
 
 import pytest
 from repository.db import Base
-from tests.test_app import engine
+from __tests__.test_app import engine
 
 
 @pytest.fixture(scope='function', autouse=True)  # type: ignore
