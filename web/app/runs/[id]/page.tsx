@@ -1,5 +1,5 @@
 import axios from "axios";
-import RunItem from "../../components/run-item";
+import RunItem from "./run-item";
 
 const Runs = ({ runs }) => (
   <div className="max-w-2xl mx-auto px-4">

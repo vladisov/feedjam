@@ -2,17 +2,16 @@ version: '3.8'
 
 services:
   web:
-    image: feedjamcr.azurecr.io/web:latest
+    build: ./
     command: uvicorn src.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
     volumes:
-      - data:/usr/src/app
+      - ./:/usr/src/app
     ports:
-      - 8004
+      - 8004:8000
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/foo
     depends_on:
       - db
-      
 
   db:
     image: postgres:15.3
@@ -25,24 +24,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=foo
 
-  worker:
-    image: feedjamcr.azurecr.io/worker:latest
-    command: celery -A src.tasks.worker worker --loglevel=info --beat
-    volumes:
-      - data:/usr/src/app/tasks
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/foo
-    depends_on:
-      - web
-      - redis
-  
-  redis:
-    image: redis:7
-
-
-
+  # Uncomment below lines to enable pgadmin
   # pgadmin:
   #   container_name: pgadmin
   #   image: dpage/pgadmin4
@@ -54,7 +36,25 @@ services:
   #   depends_on:
   #     - db
 
+  worker:
+    build: 
+      context: ./
+      dockerfile: ./Dockerfile
+    command: celery -A src.tasks.worker worker --loglevel=info --beat
+    volumes:
+      - ./tasks:/usr/src/app/tasks
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/foo
+    depends_on:
+      - web
+      - redis
 
+  redis:
+    image: redis:7
+
+  # Uncomment below lines to enable dashboard
   # dashboard:
   #   build: ./
   #   command: celery --broker=redis://redis:6379/0 flower --port=5555
@@ -68,11 +68,3 @@ services:
   #     - web
   #     - redis
   #     - worker
-  
-
-volumes:
-  data:
-    driver: azure_file
-    driver_opts:
-      share_name: fjshare
-      storage_account_name: feedjamst

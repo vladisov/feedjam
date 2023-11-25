@@ -1,8 +1,8 @@
-import faker from "faker";
+import { faker } from "@faker-js/faker";
 
-function randomString(wordCount: number): string {
+const randomString = (wordCount: number): string => {
   return faker.lorem.words(wordCount);
-}
+};
 
 export const mockFeedData = Array.from({ length: 10 }).map((_, i) => ({
   id: i,
