@@ -77,6 +77,7 @@ def test_generate_and_save_user_feed(cleanup):
     assert len(saved_user_feed.user_feed_items) == len(feed_items)
     for i, item in enumerate(saved_user_feed.user_feed_items):
         assert item.feed_item_id == feed_items[i].id
+        assert item.title == feed_items[i].title
         assert item.user_id == user_id
 
     _, _ = _create_hn_feed_items(
@@ -95,4 +96,5 @@ def test_generate_and_save_user_feed(cleanup):
     assert len(saved_user_feed.user_feed_items) == len(feed_items_upd)
     for i, item in enumerate(saved_user_feed.user_feed_items):
         assert item.feed_item_id == feed_items_upd[i].id
+        assert item.title == feed_items_upd[i].title
         assert item.user_id == user_id

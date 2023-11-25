@@ -33,6 +33,7 @@ class UserFeedItem(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(),
                         onupdate=func.now())
+    title = Column(String,)
     summary = Column(String,)
     source_name = Column(String,)
     description = Column(String,)
