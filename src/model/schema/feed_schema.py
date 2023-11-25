@@ -105,6 +105,7 @@ class UserFeedItemBase(BaseModel):
 
 class UserFeedItemCreate(UserFeedItemBase):
     description: str
+    title: str
     article_url: Optional[str] = None
     comments_url: Optional[str] = None
     points: Optional[int] = None
@@ -117,6 +118,7 @@ class UserFeedItemUpdate(UserFeedItemBase):
 
 class UserFeedItemSchema(UserFeedItemBase):
     id: int
+    title: str
     created_at: datetime
     updated_at: datetime
     summary: Optional[str] = None

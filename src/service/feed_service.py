@@ -83,6 +83,7 @@ class FeedService:
 
         return [UserFeedItemCreate(feed_item_id=item.id,
                                    user_id=user_id,
+                                   title=item.title,
                                    state=StateBase(),
                                    description=item.description,
                                    comments_url=item.comments_url,
