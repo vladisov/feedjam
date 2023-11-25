@@ -1,28 +1,22 @@
-import axios from "axios";
+import React from "react";
 import RunItem from "./run-item";
 
-const Runs = ({ runs }) => (
-  <div className="max-w-2xl mx-auto px-4">
-    <h1 className="text-3xl font-bold mb-6">Your Runs</h1>
-    {runs.map((run) => (
-      <RunItem key={run.id} run={run} />
-    ))}
-  </div>
-);
+interface RunsProps {
+  params: { slug: string };
+}
 
-Runs.getInitialProps = async (context) => {
-  console.log(context.query.id);
+const Runs: React.FC<RunsProps> = ({ params }) => {
+  // const runs = params.runs;
+  const runs: any[] = [];
 
-  let subscription_id = context.query.subscription_id;
-
-  const res = await axios.get(
-    `http://localhost:8004/runs?subscription_id=${subscription_id}`
+  return (
+    <div className="max-w-2xl mx-auto px-4">
+      <h1 className="text-3xl font-bold mb-6">Your Runs</h1>
+      {runs.map((run) => (
+        <RunItem key={run.id} run={run} />
+      ))}
+    </div>
   );
-  const runs = res.data;
-
-  return {
-    runs,
-  };
 };
 
 export default Runs;

@@ -35,7 +35,7 @@ const Timeline: React.FC<TimelineProps> = async () => {
         </Link>
       </nav> */}
       <div className="items-start  max-w-4xl">
-        {feed.map((item) => (
+        {feed.map((item: { feed_item_id: React.Key }) => (
           <FeedItem key={item.feed_item_id} item={item} />
         ))}
       </div>

@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 
-const FeedItem = ({ item }) => (
+const FeedItem = ({ item }: { item: any }) => (
   <div className="flex flex-col p-6 mb-6 border-2 border-black rounded-sm overflow-hidden">
     <div className="flex flex-row justify-between">
       <h3 className="text-2xl mb-2 font-bold items-center">{item.title}</h3>

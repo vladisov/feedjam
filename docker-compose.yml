@@ -24,6 +24,17 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=foo
 
+  webapp:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - db  # If your Next.js app depends on a database service
+
   # Uncomment below lines to enable pgadmin
   # pgadmin:
   #   container_name: pgadmin
@@ -36,23 +47,23 @@ services:
   #   depends_on:
   #     - db
 
-  worker:
-    build: 
-      context: ./
-      dockerfile: ./Dockerfile
-    command: celery -A src.tasks.worker worker --loglevel=info --beat
-    volumes:
-      - ./tasks:/usr/src/app/tasks
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/foo
-    depends_on:
-      - web
-      - redis
+  # worker:
+  #   build: 
+  #     context: ./
+  #     dockerfile: ./Dockerfile
+  #   command: celery -A src.tasks.worker worker --loglevel=info --beat
+  #   volumes:
+  #     - ./tasks:/usr/src/app/tasks
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  #     - DATABASE_URL=postgresql://postgres:postgres@db:5432/foo
+  #   depends_on:
+  #     - web
+  #     - redis
 
-  redis:
-    image: redis:7
+  # redis:
+  #   image: redis:7
 
   # Uncomment below lines to enable dashboard
   # dashboard:
