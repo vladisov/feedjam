@@ -34,6 +34,7 @@ class FeedItemBase(BaseModel):
     id: Optional[int] = None
     title: str
     link: str
+    source_name: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     published: Optional[datetime] = None
@@ -101,6 +102,7 @@ class UserFeedItemBase(BaseModel):
     feed_item_id: int
     user_id: int
     state: StateBase
+    source_name: str
 
 
 class UserFeedItemCreate(UserFeedItemBase):

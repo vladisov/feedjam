@@ -32,6 +32,7 @@ class FeedItem(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String,)
     link = Column(String,)
+    source_name = Column(String,)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(),
                         onupdate=func.now())

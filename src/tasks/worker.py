@@ -19,7 +19,7 @@ celery.conf.broker_url = os.environ.get(  # type: ignore
     "CELERY_BROKER_URL", "redis://localhost:6379")
 celery.conf.result_backend = os.environ.get(  # type: ignore
     "CELERY_RESULT_BACKEND", "redis://localhost:6379")
-FETCHER_INTERVAL = os.environ.get('FETCHER_INTERVAL', '*/30')
+FETCHER_INTERVAL = os.environ.get('FETCHER_INTERVAL', '*/5')
 
 
 celery.conf.beat_schedule = {
@@ -60,7 +60,7 @@ def do_run(run_id: int) -> bool:
     feed_storage = FeedStorage(db)
     subscription_storage = SubscriptionStorage(db)
     source_storage = SourceStorage(db)
-    data_extractor = DataExtractor(config.OPEN_API_KEY)
+    data_extractor = DataExtractor(config.OPEN_AI_KEY)
     feed_service = FeedService(
         feed_storage, subscription_storage, source_storage, data_extractor)
     run_storage = RunStorage(db)
@@ -107,7 +107,7 @@ def generate_user_view(user_id: int):
 
     feed_storage = FeedStorage(db)
     subscription_storage = SubscriptionStorage(db)
-    data_extractor = DataExtractor(config.OPEN_API_KEY)
+    data_extractor = DataExtractor(config.OPEN_AI_KEY)
     source_storage = SourceStorage(db)
 
     feed_service = FeedService(

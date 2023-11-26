@@ -1,12 +1,14 @@
 import React from "react";
-import FeedItem from "./feed-item";
+import FeedItem from "./components/feed-item";
 import Link from "next/link";
 import { mockFeedData } from "./feed";
 
 interface TimelineProps {}
 
 async function getData() {
-  const res = await fetch("http://localhost:8004/feed/1");
+  const res = await fetch("http://localhost:8004/feed/1", {
+    cache: "no-store",
+  });
 
   if (!res.ok) {
     // This will activate the closest `error.js` Error Boundary
@@ -34,7 +36,7 @@ const Timeline: React.FC<TimelineProps> = async () => {
           Runs
         </Link>
       </nav> */}
-      <div className="items-start  max-w-4xl">
+      <div className="items-start w-1/2 max-w-4xl">
         {feed.map((item: { feed_item_id: React.Key }) => (
           <FeedItem key={item.feed_item_id} item={item} />
         ))}

@@ -7,6 +7,7 @@ from model.schema.feed_schema import UserFeedItemCreate, UserFeedSchema
 from repository.source_storage import SourceStorage
 from repository.feed_storage import FeedStorage
 from repository.subscription_storage import SubscriptionStorage
+from utils import config
 
 
 class FeedService:
@@ -38,7 +39,12 @@ class FeedService:
             raise HTTPException(
                 status_code=400, detail="No parser for the source")
 
+        # move to separate function
         items = parser(source)
+        if config.ENABLE_SUMMARIZATION:
+            for item in items:
+                item.summary = self.data_extractor.extract_and_summarize(
+                    item.article_url)
 
         self.feed_storage.save_feed_items(source, items)
         return items
@@ -84,6 +90,7 @@ class FeedService:
         return [UserFeedItemCreate(feed_item_id=item.id,
                                    user_id=user_id,
                                    title=item.title,
+                                   source_name=item.source_name,
                                    state=StateBase(),
                                    description=item.description,
                                    comments_url=item.comments_url,
