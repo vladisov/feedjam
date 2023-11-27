@@ -159,8 +159,10 @@ class UserSchema(UserBase):
 
 
 class RunBase(BaseModel):
-    subscription_id: int
     status: str
+    job_type: str
+    subscription_id: Optional[int] = None
+    user_id: Optional[int] = None
 
 
 class RunCreate(RunBase):
@@ -226,6 +228,7 @@ class SubscriptionSchema(SubscriptionBase):
     created_at: datetime
     last_run: Optional[datetime] = None
     runs: Optional[List[RunSchema]]
+    source_name: Optional[str] = None
     source_id: int
 
     class Config:

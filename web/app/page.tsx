@@ -2,6 +2,7 @@ import React from "react";
 import FeedItem from "./components/feed-item";
 import Link from "next/link";
 import { mockFeedData } from "./feed";
+import "../styles/main.css";
 
 interface TimelineProps {}
 
@@ -27,15 +28,18 @@ const Timeline: React.FC<TimelineProps> = async () => {
   console.log(feed);
 
   return (
-    <div className="flex flex-col items-center justify-center  px-4 font-nunito mt-10">
-      {/* <nav className="p-6 mb-6 border rounded-md shadow-md">
-        <Link href="/subscriptions" className="text-sky-500 hover:text-sky-700">
+    <div className="flex flex-col items-center justify-center px-4 font-nunito my-10">
+      <nav className="flex flex-row items-center justify-center mb-6 w-1/2 text-2xl font-semibold">
+        <Link href="/subscriptions" className=" border-r border-black pr-2">
           Subscriptions
         </Link>
-        <Link href="/runs" className="ml-6 text-sky-500 hover:text-sky-700">
+        <Link href="/subscriptions" className=" border-r  border-black px-2">
           Runs
         </Link>
-      </nav> */}
+        <Link href="/subscriptions" className="  border-black pl-2">
+          Account
+        </Link>
+      </nav>
       <div className="items-start w-1/2 max-w-4xl">
         {feed.map((item: { feed_item_id: React.Key }) => (
           <FeedItem key={item.feed_item_id} item={item} />
