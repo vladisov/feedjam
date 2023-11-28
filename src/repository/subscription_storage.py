@@ -14,8 +14,11 @@ class SubscriptionStorage:
     def get_subscription(self, subscription_id: int) -> Optional[SubscriptionSchema]:
         return self.db.query(Subscription).filter(Subscription.id == subscription_id).first()
 
-    def get_subscriptions(self, skip: int = 0, limit: int = 100):
-        return self.db.query(Subscription).offset(skip).limit(limit).all()
+    def get_active_subscriptions(self, skip: int = 0, limit: int = 100):
+        return self.db.query(Subscription).filter(Subscription.is_active).offset(skip).limit(limit).all()
+
+    def get_active_subscriptions_count(self):
+        return self.db.query(Subscription).filter(Subscription.is_active).count()
 
     def get_user_subscriptions(self, user_id: int) -> List[SubscriptionSchema]:
         return self.db.query(Subscription).filter(Subscription.user_id == user_id).all()

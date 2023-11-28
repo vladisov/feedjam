@@ -219,6 +219,7 @@ class SubscriptionCreate(SubscriptionBase):
 
 
 class SubscriptionUpdate(SubscriptionBase):
+    id: int
     last_run: Optional[datetime] = None
 
 
