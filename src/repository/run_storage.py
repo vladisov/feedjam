@@ -58,5 +58,5 @@ class RunStorage:
 
     def get_all_pending_runs(self) -> List[RunSchema]:
         runs = self.db.query(Run).filter(
-            Run.status.in_("pending")).all()
+            Run.status.in_(["pending"])).all()
         return runs

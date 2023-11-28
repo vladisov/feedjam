@@ -26,7 +26,7 @@ JOB_RUNNER_INTERVAL = os.environ.get('JOB_RUNNER_INTERVAL', '*/1')
 
 celery.conf.beat_schedule = {
     'generic_job_runner': {
-        'task': 'schedule_run',
+        'task': 'generic_job_runner',
         'schedule': crontab(minute=JOB_RUNNER_INTERVAL),
     },
     'schedule_all_subs': {
@@ -34,7 +34,7 @@ celery.conf.beat_schedule = {
         'schedule': crontab(minute=FETCHER_INTERVAL),
     },
     'generate_all_views': {
-        'task': 'generate_views',
+        'task': 'generate_all_views',
         'schedule': crontab(minute=FETCHER_INTERVAL),
     },
 }
