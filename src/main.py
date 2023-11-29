@@ -1,5 +1,5 @@
 from fastapi import Depends, FastAPI, HTTPException
-from model.schema.feed_schema import RunSchema, SubscriptionCreateAPI, SubscriptionSchema, UserFeedSchema
+from model.schema.feed_schema import RunCreate, RunSchema, SubscriptionCreateAPI, SubscriptionSchema, UserFeedSchema
 from model.schema.user_schema import UserCreate, UserSchema
 from repository.db import engine, Base
 from repository.run_storage import RunStorage
@@ -9,6 +9,7 @@ from service.subscription_service import SubscriptionService
 from utils.dependencies import get_feed_service, get_run_storage, get_subscription_service
 from utils.dependencies import get_user_storage
 from utils.logger import get_logger
+from repository.db import get_db
 
 
 # Base.metadata.drop_all(bind=engine)  # type: ignore
@@ -17,10 +18,19 @@ Base.metadata.create_all(bind=engine)  # type: ignore
 app = FastAPI()
 logger = get_logger(__name__)
 
+default_users = [
+    UserCreate(handle="test1"),  # Fill in the other required fields
+    UserCreate(handle="test2")
+]
+
 
 @app.on_event("startup")
 def on_startup():
-    pass
+    db = next(get_db())  # type: ignore
+    user_storage = UserStorage(db)
+    for user_data in default_users:
+        if not user_storage.get_user_by_handle(handle=user_data.handle):
+            user_storage.create_user(user=user_data)
 
 
 @app.post("/users/", response_model=UserSchema)
@@ -65,8 +75,8 @@ def get_subscriptions(user_id: int, sub_service: SubscriptionService = Depends(g
 
 
 @app.get("/runs", response_model=list[RunSchema],)
-def get_runs(user_id: int, run_storage: RunStorage = Depends(get_run_storage)):
-    runs = run_storage.get_runs_by_user(user_id)
+def get_runs(run_storage: RunStorage = Depends(get_run_storage)):
+    runs = run_storage.get_all_runs()
     return runs
 
 
@@ -74,3 +84,9 @@ def get_runs(user_id: int, run_storage: RunStorage = Depends(get_run_storage)):
 def get_runs_by_id(subscription_id: int, run_storage: RunStorage = Depends(get_run_storage)):
     runs = run_storage.get_runs_by_subscription(subscription_id)
     return runs
+
+
+@app.post("/runs/", response_model=RunSchema)
+def create_run(run: RunCreate,
+               run_storage: RunStorage = Depends(get_run_storage)):
+    return run_storage.create_run(run=run)

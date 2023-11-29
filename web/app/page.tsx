@@ -3,28 +3,12 @@ import FeedItem from "./components/feed-item";
 import Link from "next/link";
 import { mockFeedData } from "./feed";
 import "../styles/main.css";
+import { getFeedItems } from "./utils";
 
 interface TimelineProps {}
 
-async function getData() {
-  const res = await fetch("http://localhost:8004/feed/1", {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    // This will activate the closest `error.js` Error Boundary
-    throw new Error("Failed to fetch data");
-  }
-
-  return res.json();
-}
-
 const Timeline: React.FC<TimelineProps> = async () => {
-  // const feed_data = await fetch(
-  //   "http://localhost:8004/runs?subscription_id=${subscription_id}"
-  // );
-  // const feed = mockFeedData;
-  const feed = (await getData()).user_feed_items;
+  const feed = (await getFeedItems("1")).user_feed_items;
   console.log(feed);
 
   return (
@@ -33,10 +17,10 @@ const Timeline: React.FC<TimelineProps> = async () => {
         <Link href="/subscriptions" className=" border-r border-black pr-2">
           Subscriptions
         </Link>
-        <Link href="/subscriptions" className=" border-r  border-black px-2">
+        <Link href="/runs" className=" border-r  border-black px-2">
           Runs
         </Link>
-        <Link href="/subscriptions" className="  border-black pl-2">
+        <Link href="/account" className=" border-black pl-2">
           Account
         </Link>
       </nav>
