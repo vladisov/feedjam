@@ -1,6 +1,7 @@
 import axios from "axios";
 import Link from "next/link";
 import { format } from "date-fns";
+import { getSubscriptions } from "../utils";
 
 const SubscriptionItem = ({ subscription }: { subscription: any }) => (
   <div className="border-2 border-black rounded-sm p-6 mb-4">
@@ -13,9 +14,7 @@ const SubscriptionItem = ({ subscription }: { subscription: any }) => (
 );
 
 const Subscriptions = async () => {
-  const res = await fetch("http://localhost:8004/subscriptions?user_id=1");
-
-  const subscriptions: any[] = await res.json();
+  const subscriptions = await getSubscriptions(1);
 
   return (
     <div className="max-w-2xl mx-auto px-4 my-10 font-nunito">
