@@ -1,6 +1,6 @@
 from fastapi import Depends, FastAPI, HTTPException
-from model.schema.feed_schema import RunCreate, RunSchema, SubscriptionCreateAPI, SubscriptionSchema, UserFeedSchema
-from model.schema.user_schema import UserCreate, UserSchema
+from model.schema.feed_schema import RunCreate, RunSchema, SubscriptionCreateAPI, SubscriptionSchema
+from model.schema.feed_schema import UserCreate, UserFeedSchema, UserSchema
 from repository.db import engine, Base
 from repository.run_storage import RunStorage
 from repository.user_storage import UserStorage
@@ -9,8 +9,10 @@ from service.subscription_service import SubscriptionService
 from utils.dependencies import get_feed_service, get_run_storage, get_subscription_service
 from utils.dependencies import get_user_storage
 from utils.logger import get_logger
-from repository.db import get_db
+from startup_runner import on_startup  # noqa
+import ssl
 
+ssl._create_default_https_context = ssl._create_unverified_context  # I don't know WHY
 
 # Base.metadata.drop_all(bind=engine)  # type: ignore
 Base.metadata.create_all(bind=engine)  # type: ignore
@@ -18,19 +20,10 @@ Base.metadata.create_all(bind=engine)  # type: ignore
 app = FastAPI()
 logger = get_logger(__name__)
 
-default_users = [
-    UserCreate(handle="test1"),  # Fill in the other required fields
-    UserCreate(handle="test2")
-]
-
 
 @app.on_event("startup")
-def on_startup():
-    db = next(get_db())  # type: ignore
-    user_storage = UserStorage(db)
-    for user_data in default_users:
-        if not user_storage.get_user_by_handle(handle=user_data.handle):
-            user_storage.create_user(user=user_data)
+def startup_event():
+    on_startup(app)  # Pass app as an argument to on_startup
 
 
 @app.post("/users/", response_model=UserSchema)
@@ -90,3 +83,8 @@ def get_runs_by_id(subscription_id: int, run_storage: RunStorage = Depends(get_r
 def create_run(run: RunCreate,
                run_storage: RunStorage = Depends(get_run_storage)):
     return run_storage.create_run(run=run)
+
+
+@app.get("/user/{user_id}", response_model=UserSchema)
+def get_account_details(user_id: int, user_storage: UserStorage = Depends(get_user_storage)):
+    return user_storage.get_user(user_id)

@@ -41,10 +41,12 @@ class FeedService:
 
         # move to separate function
         items = parser(source)
-        if config.ENABLE_SUMMARIZATION:
-            for item in items:
+        for item in items:
+            if config.ENABLE_SUMMARIZATION:
                 item.summary = self.data_extractor.extract_and_summarize(
                     item.article_url)
+            else:
+                item.summary = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
 
         self.feed_storage.save_feed_items(source, items)
         return items
@@ -96,4 +98,5 @@ class FeedService:
                                    comments_url=item.comments_url,
                                    article_url=item.article_url,
                                    points=item.points,
+                                   summary=item.summary,
                                    views=item.views) for item in new_items]

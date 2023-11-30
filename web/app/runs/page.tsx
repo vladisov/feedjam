@@ -1,4 +1,3 @@
-import axios from "axios";
 import RunItem from "./[id]/run-item";
 
 const Runs = () => {

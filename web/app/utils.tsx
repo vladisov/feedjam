@@ -38,3 +38,15 @@ export const getPendingRuns = async () => {
 
   return res.json();
 };
+
+export const getUser = async (user_id: number) => {
+  const res = await fetch(`${API_ENDPOINT}/user/${user_id}`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch data");
+  }
+
+  return res.json();
+};

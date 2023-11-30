@@ -112,6 +112,7 @@ class UserFeedItemCreate(UserFeedItemBase):
     comments_url: Optional[str] = None
     points: Optional[int] = None
     views: Optional[int] = None
+    summary: Optional[str] = None
 
 
 class UserFeedItemUpdate(UserFeedItemBase):
