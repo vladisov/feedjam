@@ -34,7 +34,7 @@ def get_run_storage(db=Depends(get_db)):
 
 
 def get_data_extractor():
-    return DataExtractor(config.OPEN_API_KEY)
+    return DataExtractor(config.OPEN_AI_KEY)
 
 
 def get_feed_service(feed_storage=Depends(get_feed_storage), subscription_storage=Depends(get_subscription_storage),

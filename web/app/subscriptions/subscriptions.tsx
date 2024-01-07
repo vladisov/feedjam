@@ -1,37 +1,30 @@
 import axios from "axios";
 import Link from "next/link";
 import { format } from "date-fns";
+import { getSubscriptions } from "../utils";
 
 const SubscriptionItem = ({ subscription }: { subscription: any }) => (
-  <div className="bg-white rounded-md p-6 mb-4 shadow">
+  <div className="border-2 border-black rounded-sm p-6 mb-4">
     <p className="font-semibold">Subscription ID: {subscription.id}</p>
-    <p className="font-semibold">Source ID: {subscription.source_id}</p>
+    <p className="font-semibold">Source: {subscription.source_name}</p>
     <p className="text-sm text-gray-500 mb-2">
       Created at: {format(new Date(subscription.created_at), "MM/dd/yyyy")}
     </p>
-    <p>
-      Last run:{" "}
-      {subscription.last_run
-        ? format(new Date(subscription.last_run), "MM/dd/yyyy")
-        : "No runs yet"}
-    </p>
-    <Link
-      href={`/runs/${subscription.id}`}
-      className="text-indigo-500 hover:text-indigo-700"
-    >
-      View Runs
-    </Link>
   </div>
 );
 
-const Subscriptions = ({ subscriptions }: { subscriptions: any }) => (
-  <div className="max-w-2xl mx-auto px-4">
-    <h1 className="text-3xl font-bold mb-6">Your Subscriptions</h1>
-    {subscriptions.map((subscription: any) => (
-      <SubscriptionItem key={subscription.id} subscription={subscription} />
-    ))}
-  </div>
-);
+const Subscriptions = async () => {
+  const subscriptions = await getSubscriptions(1);
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 my-10 font-nunito">
+      <h1 className="text-3xl font-bold mb-6">Your Subscriptions</h1>
+      {subscriptions.map((subscription: any) => (
+        <SubscriptionItem key={subscription.id} subscription={subscription} />
+      ))}
+    </div>
+  );
+};
 
 // export async function getServerSideProps(context) {
 //   const user_id = 1;
