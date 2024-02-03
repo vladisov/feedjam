@@ -1,7 +1,6 @@
 
 import pytest
-from model.schema.feed_schema import SubscriptionSchema
-from model.schema.user_schema import UserSchema
+from model.schema.feed_schema import SubscriptionSchema, UserSchema
 from repository.source_storage import SourceStorage
 from __tests__.test_app import _create_user, client, override_get_db
 

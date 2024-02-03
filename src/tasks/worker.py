@@ -90,7 +90,7 @@ def schedule_all_subs(run_id: int | None = None) -> bool:
 
     for sub in sub_storage.get_active_subscriptions():
         run_storage.create_run(
-            RunCreate(job_type='single_subscription', status="pending", subscription_id=sub.id))
+            RunCreate(job_type='single_subscription', status="pending", subscription_id=sub.id, user_id=sub.user_id))
 
     if run_id is not None:
         run_storage.update_run_status(run_id, "success")

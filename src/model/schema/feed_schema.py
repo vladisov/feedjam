@@ -152,8 +152,8 @@ class UserUpdate(UserBase):
 class UserSchema(UserBase):
     id: int
     created_at: datetime
-    user_feeds: List[UserFeedSchema]
-    user_feed_items: List[UserFeedItemSchema]
+    user_feeds: Optional[List[UserFeedSchema]] = []
+    user_feed_items: Optional[List[UserFeedItemSchema]] = []
 
     class Config:
         orm_mode = True

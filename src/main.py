@@ -21,9 +21,9 @@ app = FastAPI()
 logger = get_logger(__name__)
 
 
-@app.on_event("startup")
-def startup_event():
-    on_startup(app)  # Pass app as an argument to on_startup
+# @app.on_event("startup")
+# def startup_event():
+#     on_startup(app)
 
 
 @app.post("/users/", response_model=UserSchema)

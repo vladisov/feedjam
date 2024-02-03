@@ -12,7 +12,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=foo
 
-  web:
+  api:
     build: ./
     command: uvicorn src.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
     volumes:
@@ -24,16 +24,16 @@ services:
     depends_on:
       - db
 
-  # webapp:
-  #   build:
-  #     context: ./web
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - NODE_ENV=production
-  #   depends_on:
-  #     - db  
+  webapp:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - db  
 
   worker:
     build: 
@@ -48,35 +48,35 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/foo
       - FETCHER_INTERVAL=*/45
     depends_on:
-      - web
+      - api
       - redis
 
   redis:
     image: redis:7
 
   # Uncomment below lines to enable pgadmin
-  # pgadmin:
-  #   container_name: pgadmin
-  #   image: dpage/pgadmin4
-  #   environment:
-  #     - PGADMIN_DEFAULT_EMAIL=me@ya.com
-  #     - PGADMIN_DEFAULT_PASSWORD=me
-  #   ports:
-  #     - "5050:80"
-  #   depends_on:
-  #     - db
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=me@ya.com
+      - PGADMIN_DEFAULT_PASSWORD=me
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
 
   # Uncomment below lines to enable dashboard
-  # dashboard:
-  #   build: ./
-  #   command: celery --broker=redis://redis:6379/0 flower --port=5555
-  #   ports:
-  #     - 5556:5555
-  #   environment:
-  #     - CELERY_BROKER_URL=redis://redis:6379/0
-  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
-  #     - FETCHER_INTERVAL=*/45
-  #   depends_on:
-  #     - web
-  #     - redis
-  #     - worker
+  dashboard:
+    build: ./
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    ports:
+      - 5556:5555
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - FETCHER_INTERVAL=*/45
+    depends_on:
+      - api
+      - redis
+      - worker

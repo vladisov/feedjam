@@ -14,8 +14,8 @@ def test_parse_web_page_hn():
         mock_response.text = hn_file
         with patch('requests.get', return_value=mock_response):
 
-            text = data_extractor.get_webpage_text(
-                "https://t.me/redakciya_channel/27463")
+            text = data_extractor.get_webpage_text("source_name",
+                                                   "https://t.me/redakciya_channel/27463")
 
             assert text is not None  # make a more sophisticated check
 
