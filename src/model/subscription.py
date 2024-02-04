@@ -24,6 +24,9 @@ class Run(Base):
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, server_default=func.now())
     status = Column(String, default="pending")
+    job_type = Column(String,)
 
     subscription_id = Column(Integer, ForeignKey("subscriptions.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+
     subscription = relationship("Subscription", back_populates="runs")

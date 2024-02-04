@@ -3,8 +3,7 @@ from starlette.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
-from model.schema.user_schema import UserSchema
+from model.schema.feed_schema import UserSchema
 
 from repository.db import get_db
 from main import app

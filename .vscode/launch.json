@@ -1,0 +1,105 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Next.js: debug server-side",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/web",
+      "outFiles": ["${workspaceFolder}/web/**/*.js"]
+    },
+    {
+      "name": "Next.js: debug client-side",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "cwd": "${workspaceFolder}/web",
+      "outFiles": ["${workspaceFolder}/web/**/*.js"]
+    },
+    {
+      "name": "Next.js: debug full stack",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "serverReadyAction": {
+        "pattern": "- Local:.+(https?://.+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome"
+      },
+      "cwd": "${workspaceFolder}/web",
+      "outFiles": ["${workspaceFolder}/web/**/*.js"]
+    },
+    {
+      "name": "Worker",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "celery",
+      "console": "integratedTerminal",
+      "args": [
+        "-A",
+        "src.tasks.worker",
+        "worker",
+        "-l",
+        "info",
+        "-P",
+        "solo",
+        "--beat"
+      ],
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/foo",
+        "FETCHER_INTERVAL": "*/5",
+        "JOB_RUNNER_INTERVAL": "*/1"
+      }
+    },
+    {
+      "name": "API",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["src.main:app", "--reload"],
+      "jinja": true,
+      "justMyCode": true,
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/foo",
+        "CREATE_ITEMS_ON_STARTUP": "True"
+      }
+    },
+    {
+      "name": "API Local",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["src.main:app", "--reload"],
+      "jinja": true,
+      "justMyCode": true,
+      "env": {
+        "CREATE_ITEMS_ON_STARTUP": "True"
+      }
+    },
+    {
+      "name": "Worker Local",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "celery",
+      "console": "integratedTerminal",
+      "args": [
+        "-A",
+        "src.tasks.worker",
+        "worker",
+        "-l",
+        "info",
+        "-P",
+        "solo",
+        "--beat"
+      ],
+      "env": {
+        "FETCHER_INTERVAL": "*/5",
+        "JOB_RUNNER_INTERVAL": "*/1"
+      }
+    }
+  ]
+}

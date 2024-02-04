@@ -10,10 +10,10 @@ logger = get_logger(__name__)
 
 def parse_hn_feed(source: SourceSchema) -> List[FeedItemCreate]:
     feed = feedparser.parse(source.resource_url)
-    return [_crete_hn_feed_item(item) for item in feed.entries]
+    return [_crete_hn_feed_item(item, source.name) for item in feed.entries]
 
 
-def _crete_hn_feed_item(item) -> FeedItemCreate:
+def _crete_hn_feed_item(item, source_name: str) -> FeedItemCreate:
     local_id = item.id
     title = item.title
     published = datetime(*item.published_parsed[:6])
@@ -43,6 +43,7 @@ def _crete_hn_feed_item(item) -> FeedItemCreate:
     return FeedItemCreate(
         title=title,
         link=link,
+        source_name=source_name,
         local_id=local_id,
         description=summary,
         points=points,
