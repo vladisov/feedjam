@@ -6,6 +6,7 @@ from repository.run_storage import RunStorage
 from repository.user_storage import UserStorage
 from service.feed_service import FeedService
 from service.subscription_service import SubscriptionService
+from utils.config import CREATE_ITEMS_ON_STARTUP
 from utils.dependencies import get_feed_service, get_run_storage, get_subscription_service
 from utils.dependencies import get_user_storage
 from utils.logger import get_logger
@@ -21,9 +22,10 @@ app = FastAPI()
 logger = get_logger(__name__)
 
 
-# @app.on_event("startup")
-# def startup_event():
-#     on_startup(app)
+@app.on_event("startup")
+def startup_event():
+    if CREATE_ITEMS_ON_STARTUP:
+        on_startup(app)
 
 
 @app.post("/users/", response_model=UserSchema)
@@ -46,7 +48,7 @@ def get_users(skip: int = 0, limit: int = 100,
 @app.get("/feed/{user_id}", response_model=UserFeedSchema)
 async def get_feed(user_id: int,
                    feed_service: FeedService = Depends(get_feed_service)) -> UserFeedSchema:
-    user_feed: UserFeedSchema = feed_service.get_user_feed(user_id)
+    user_feed = feed_service.get_user_feed(user_id)
     if not user_feed:
         raise HTTPException(status_code=404, detail="Feed not found")
     return user_feed
@@ -87,4 +89,8 @@ def create_run(run: RunCreate,
 
 @app.get("/user/{user_id}", response_model=UserSchema)
 def get_account_details(user_id: int, user_storage: UserStorage = Depends(get_user_storage)):
-    return user_storage.get_user(user_id)
+    logger.info(f"Fetching user {user_id}")
+    user = user_storage.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user

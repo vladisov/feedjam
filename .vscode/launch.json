@@ -64,7 +64,8 @@
       "jinja": true,
       "justMyCode": true,
       "env": {
-        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/foo"
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/foo",
+        "CREATE_ITEMS_ON_STARTUP": "True"
       }
     },
     {
@@ -75,7 +76,9 @@
       "args": ["src.main:app", "--reload"],
       "jinja": true,
       "justMyCode": true,
-      "env": {}
+      "env": {
+        "CREATE_ITEMS_ON_STARTUP": "True"
+      }
     },
     {
       "name": "Worker Local",

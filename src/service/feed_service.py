@@ -55,8 +55,11 @@ class FeedService:
     def get_feed_items(self, user_id: int, skip: int = 0, limit: int = 100) -> List[FeedItemSchema]:
         return self.feed_storage.get_feed_items_by_user(user_id, skip, limit)
 
-    def get_user_feed(self, user_id: int) -> UserFeedSchema:
-        return self.feed_storage.get_user_feed(user_id)
+    def get_user_feed(self, user_id: int) -> UserFeedSchema | None:
+        try:
+            return self.feed_storage.get_user_feed(user_id)
+        except Exception:
+            return None
 
     def generate_and_save_user_feed(self, user_id: int) -> None:
         active_user_feed = self.feed_storage.get_active_user_feed(user_id)

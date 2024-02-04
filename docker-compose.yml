@@ -21,19 +21,9 @@ services:
       - 8004:8000
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/foo
+      - CREATE_ITEMS_ON_STARTUP=False
     depends_on:
       - db
-
-  webapp:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-    depends_on:
-      - db  
 
   worker:
     build: 
@@ -54,7 +44,6 @@ services:
   redis:
     image: redis:7
 
-  # Uncomment below lines to enable pgadmin
   pgadmin:
     container_name: pgadmin
     image: dpage/pgadmin4
@@ -66,7 +55,6 @@ services:
     depends_on:
       - db
 
-  # Uncomment below lines to enable dashboard
   dashboard:
     build: ./
     command: celery --broker=redis://redis:6379/0 flower --port=5555

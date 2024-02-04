@@ -1,3 +1,10 @@
+import os
+
+
 ENABLE_SUMMARIZATION = False
+
+CREATE_ITEMS_ON_STARTUP = os.environ.get(
+    "CREATE_ITEMS_ON_STARTUP") or False
+
 OPEN_AI_KEY = ''
 HUGGINGFACE_API_KEY = ''

@@ -17,6 +17,6 @@ const fetchData = async (url: string) => {
 export const getFeedItems = async (user_id: string) =>
   fetchData(`feed/${user_id}`);
 export const getSubscriptions = async (user_id: number) =>
-  fetchData(`subscriptions/${user_id}`);
+  fetchData(`subscriptions/?user_id=${user_id}`);
 export const getPendingRuns = async () => fetchData("runs");
 export const getUser = async (user_id: number) => fetchData(`user/${user_id}`);
