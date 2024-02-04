@@ -55,3 +55,11 @@ class RunStorage:
             Run.subscription_id.in_(subscription_ids)).all()
 
         return runs
+
+    def get_all_pending_runs(self) -> List[RunSchema]:
+        runs = self.db.query(Run).filter(
+            Run.status.in_(["pending"])).all()
+        return runs
+
+    def get_all_runs(self) -> List[RunSchema]:
+        return self.db.query(Run).all()

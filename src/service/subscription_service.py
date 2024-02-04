@@ -43,7 +43,15 @@ class SubscriptionService:
         return created_subscription
 
     def get_all_subscriptions(self) -> List[SubscriptionSchema]:
-        return self.subscription_storage.get_subscriptions()
+        return self.subscription_storage.get_active_subscriptions()
 
+    # not efficient obviously, improve later
     def get_user_subscriptions(self, user_id: int) -> List[SubscriptionSchema]:
-        return self.subscription_storage.get_user_subscriptions(user_id)
+        subscriptions = self.subscription_storage.get_user_subscriptions(
+            user_id)
+        for subscription in subscriptions:
+            source = self.source_storage.get_source(
+                subscription.source_id)
+            if source:
+                subscription.source_name = source.name
+        return subscriptions

@@ -8,6 +8,7 @@ from service.feed_service import FeedService
 from repository.source_storage import SourceStorage
 from repository.feed_storage import FeedStorage
 from repository.subscription_storage import SubscriptionStorage
+from utils import config
 
 
 def _create_subscription(subscription: SubscriptionCreateAPI):
@@ -34,6 +35,8 @@ def _create_hn_feed_items(feed_service: FeedService,
 
 
 def test_fetch_feed(cleanup):
+    config.ENABLE_SUMMARIZATION = False
+
     db = next(override_get_db())
     feed_storage = FeedStorage(db)
     subscription_storage = SubscriptionStorage(db)
@@ -46,10 +49,14 @@ def test_fetch_feed(cleanup):
     items = service.get_feed_items(1, 0, 100)
     assert len(items) == 30
     assert items[0].title is not None
+    assert items[0].source_name is not None
     assert items[29].title is not None
+    assert items[29].source_name is not None
 
 
 def test_generate_and_save_user_feed(cleanup):
+    config.ENABLE_SUMMARIZATION = False
+
     db = next(override_get_db())
     feed_storage = FeedStorage(db)
     subscription_storage = SubscriptionStorage(db)
@@ -78,6 +85,7 @@ def test_generate_and_save_user_feed(cleanup):
     for i, item in enumerate(saved_user_feed.user_feed_items):
         assert item.feed_item_id == feed_items[i].id
         assert item.title == feed_items[i].title
+        assert item.source_name == feed_items[i].source_name
         assert item.user_id == user_id
 
     _, _ = _create_hn_feed_items(
@@ -97,4 +105,5 @@ def test_generate_and_save_user_feed(cleanup):
     for i, item in enumerate(saved_user_feed.user_feed_items):
         assert item.feed_item_id == feed_items_upd[i].id
         assert item.title == feed_items_upd[i].title
+        assert item.source_name == feed_items_upd[i].source_name
         assert item.user_id == user_id

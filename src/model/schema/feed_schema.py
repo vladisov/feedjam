@@ -34,6 +34,7 @@ class FeedItemBase(BaseModel):
     id: Optional[int] = None
     title: str
     link: str
+    source_name: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     published: Optional[datetime] = None
@@ -101,6 +102,7 @@ class UserFeedItemBase(BaseModel):
     feed_item_id: int
     user_id: int
     state: StateBase
+    source_name: str
 
 
 class UserFeedItemCreate(UserFeedItemBase):
@@ -110,6 +112,7 @@ class UserFeedItemCreate(UserFeedItemBase):
     comments_url: Optional[str] = None
     points: Optional[int] = None
     views: Optional[int] = None
+    summary: Optional[str] = None
 
 
 class UserFeedItemUpdate(UserFeedItemBase):
@@ -149,16 +152,18 @@ class UserUpdate(UserBase):
 class UserSchema(UserBase):
     id: int
     created_at: datetime
-    user_feeds: List[UserFeedSchema]
-    user_feed_items: List[UserFeedItemSchema]
+    user_feeds: Optional[List[UserFeedSchema]] = []
+    user_feed_items: Optional[List[UserFeedItemSchema]] = []
 
     class Config:
         orm_mode = True
 
 
 class RunBase(BaseModel):
-    subscription_id: int
     status: str
+    job_type: str
+    subscription_id: Optional[int] = None
+    user_id: Optional[int] = None
 
 
 class RunCreate(RunBase):
@@ -215,6 +220,7 @@ class SubscriptionCreate(SubscriptionBase):
 
 
 class SubscriptionUpdate(SubscriptionBase):
+    id: int
     last_run: Optional[datetime] = None
 
 
@@ -224,6 +230,7 @@ class SubscriptionSchema(SubscriptionBase):
     created_at: datetime
     last_run: Optional[datetime] = None
     runs: Optional[List[RunSchema]]
+    source_name: Optional[str] = None
     source_id: int
 
     class Config:
