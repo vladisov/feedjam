@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { IconFeedback } from "./icon-feedback";
 
 const FeedItem = ({ item }: { item: any }) => {

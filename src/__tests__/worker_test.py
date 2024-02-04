@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, Mock, patch
 import pytest
-from model.schema.feed_schema import SubscriptionUpdate
 from tasks.worker import generic_job_runner
 
 
