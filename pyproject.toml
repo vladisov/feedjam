@@ -33,7 +33,7 @@ feedparser = "^6.0.11"
 html2text = "^2024.2.26"
 
 # AI
-openai = "^1.58.0"
+openai = "^2.15.0"
 
 # Utils
 python-dotenv = "^1.0.1"
