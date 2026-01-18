@@ -132,6 +132,7 @@ class LLMService:
                 r = results[i]
                 processed.append(
                     ProcessedContent(
+                        title=r.get("title"),  # None if LLM says original is fine
                         summary=r.get("summary"),
                         topics=r.get("topics", []),
                         quality_score=float(r.get("quality", 0.5)),

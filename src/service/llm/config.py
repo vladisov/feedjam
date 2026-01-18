@@ -34,12 +34,14 @@ class LLMConfig:
 class ProcessedContent:
     """Result of LLM content processing."""
 
+    title: str | None = None  # Cleaned/shortened title (if original was long)
     summary: str | None = None
     topics: list[str] = field(default_factory=list)
     quality_score: float = 0.5
 
     def to_dict(self) -> dict:
         return {
+            "title": self.title,
             "summary": self.summary,
             "topics": self.topics,
             "quality_score": self.quality_score,
@@ -48,6 +50,7 @@ class ProcessedContent:
     @classmethod
     def from_dict(cls, data: dict) -> "ProcessedContent":
         return cls(
+            title=data.get("title"),
             summary=data.get("summary"),
             topics=data.get("topics", []),
             quality_score=data.get("quality_score", 0.5),

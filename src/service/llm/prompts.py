@@ -2,12 +2,13 @@
 
 SYSTEM_CONTENT_PROCESSOR = """You are a content analysis assistant. You analyze articles and provide structured information about them. Always respond with valid JSON."""
 
-PROCESS_ITEMS_PROMPT = '''Analyze these articles and return a JSON response.
+PROCESS_ITEMS_PROMPT = """Analyze these articles and return a JSON response.
 
 Articles:
 {items}
 
 For each article, provide:
+- title: A cleaned, concise title (max 80 characters). If the original title is already short and clear, return null. Otherwise, shorten and improve readability while preserving the key meaning.
 - summary: A 2-3 sentence summary (max 100 words). Capture the key points.
 - topics: 3-5 keyword topics for categorization (lowercase, single words or hyphenated phrases)
 - quality: A score from 0.0 to 1.0 based on:
@@ -18,12 +19,12 @@ For each article, provide:
 Return JSON in this exact format:
 {{
   "results": [
-    {{"summary": "...", "topics": ["topic1", "topic2"], "quality": 0.8}},
+    {{"title": "..." or null, "summary": "...", "topics": ["topic1", "topic2"], "quality": 0.8}},
     ...
   ]
 }}
 
-Analyze {count} articles. Return exactly {count} results in the same order.'''
+Analyze {count} articles. Return exactly {count} results in the same order."""
 
 
 def format_items_for_processing(items: list) -> str:
@@ -41,7 +42,7 @@ def format_items_for_processing(items: list) -> str:
 
 SYSTEM_RELEVANCE_SCORER = """You are a content relevance scorer. You evaluate how relevant articles are to a user's interests. Always respond with valid JSON."""
 
-SCORE_RELEVANCE_PROMPT = '''Score the relevance of these articles to the user's profile.
+SCORE_RELEVANCE_PROMPT = """Score the relevance of these articles to the user's profile.
 
 User Interests: {interests}
 User's Preferred Sources: {liked_sources}
@@ -60,7 +61,7 @@ Return JSON:
   "scores": [0.8, 0.3, 0.7, ...]
 }}
 
-Score {count} articles. Return exactly {count} scores in the same order.'''
+Score {count} articles. Return exactly {count} scores in the same order."""
 
 
 def format_items_for_relevance(items: list) -> str:
