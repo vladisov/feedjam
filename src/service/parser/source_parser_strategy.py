@@ -80,16 +80,10 @@ def parse_source_name(resource_url: str, source_type: str | None = None) -> str:
     Uses the parser's get_source_name method if available,
     otherwise falls back to a generic name.
     """
-    # Try to get parser-specific name
-    if source_type:
-        parser = get_parser(source_type)
-        if parser:
-            return parser.get_source_name(resource_url)
-
-    # Try auto-detected parser
-    detected_type = detect_source_type(resource_url)
-    if detected_type:
-        parser = get_parser(detected_type)
+    # Try explicit source type, then auto-detect
+    effective_type = source_type or detect_source_type(resource_url)
+    if effective_type:
+        parser = get_parser(effective_type)
         if parser:
             return parser.get_source_name(resource_url)
 

@@ -64,3 +64,13 @@ def toggle_dislike(
 ):
     """Toggle dislike for a feed item."""
     return feed_service.toggle_dislike(user_id, item_id)
+
+
+@router.post("/{user_id}/items/{item_id}/star")
+def toggle_star(
+    user_id: int,
+    item_id: int,
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    """Toggle star (save for later) for a feed item."""
+    return feed_service.toggle_star(user_id, item_id)

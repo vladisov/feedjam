@@ -77,23 +77,16 @@ class TelegramParser(BaseParser):
             item = {}
 
             # Extract main message
-            text_div = message.find("div", class_="tgme_widget_message_text")
-            if text_div is not None:
+            if text_div := message.find("div", class_="tgme_widget_message_text"):
                 item["message"] = html2text.html2text(text_div.text)
 
             # Extract metadata
-            meta_div = message.find("div", class_="tgme_widget_message_info short js-message_info")
-            if meta_div is not None:
-                views = meta_div.find("span", class_="tgme_widget_message_views")
-                if views is not None:
+            if meta_div := message.find("div", class_="tgme_widget_message_info short js-message_info"):
+                if views := meta_div.find("span", class_="tgme_widget_message_views"):
                     item["views"] = views.text
-
-                date_time = meta_div.find("time", class_="time")
-                if date_time is not None:
+                if date_time := meta_div.find("time", class_="time"):
                     item["datetime"] = date_time["datetime"]
-
-                post_link = meta_div.find("a", class_="tgme_widget_message_date")
-                if post_link is not None:
+                if post_link := meta_div.find("a", class_="tgme_widget_message_date"):
                     item["post_link"] = post_link["href"]
 
             items.append(item)

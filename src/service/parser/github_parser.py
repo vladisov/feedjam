@@ -1,6 +1,5 @@
 """GitHub feed parser."""
 
-from datetime import datetime
 from urllib.parse import urlparse
 
 import feedparser
@@ -100,21 +99,8 @@ class GitHubParser(BaseParser):
         elif hasattr(entry, "summary"):
             description = entry.summary
 
-        # Parse updated/published date
-        published = None
-        if hasattr(entry, "updated_parsed") and entry.updated_parsed:
-            try:
-                published = datetime(*entry.updated_parsed[:6])
-            except (TypeError, ValueError):
-                pass
-        elif hasattr(entry, "published_parsed") and entry.published_parsed:
-            try:
-                published = datetime(*entry.published_parsed[:6])
-            except (TypeError, ValueError):
-                pass
-
-        if not published:
-            published = datetime.now()
+        # GitHub prefers updated_parsed over published_parsed
+        published = self._parse_published_date(entry)
 
         return FeedItemIn(
             title=title,

@@ -21,6 +21,7 @@ Example:
 """
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from model.source import Source
 from schemas import FeedItemIn
@@ -116,3 +117,19 @@ class BaseParser(ABC):
         parsed = urlparse(url)
         path = parsed.path.strip("/").replace("/", "-") or "feed"
         return f"{parsed.netloc}-{path}"
+
+    def _parse_published_date(self, entry, fallback_to_now: bool = True) -> datetime | None:
+        """Extract published date from a feedparser entry.
+
+        Tries published_parsed first, then updated_parsed.
+        Returns current datetime if fallback_to_now is True and no date found.
+        """
+        for attr in ("published_parsed", "updated_parsed"):
+            parsed = getattr(entry, attr, None)
+            if parsed:
+                try:
+                    return datetime(*parsed[:6])
+                except (TypeError, ValueError):
+                    continue
+
+        return datetime.now() if fallback_to_now else None

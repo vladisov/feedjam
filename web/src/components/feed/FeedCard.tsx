@@ -1,18 +1,50 @@
 import {
   ChatBubbleLeftIcon,
   ArrowTopRightOnSquareIcon,
-  StarIcon,
+  BookmarkIcon,
   EyeIcon,
   HandThumbUpIcon,
   HandThumbDownIcon,
 } from '@heroicons/react/24/outline'
 import {
-  StarIcon as StarIconSolid,
+  BookmarkIcon as BookmarkIconSolid,
   HandThumbUpIcon as HandThumbUpIconSolid,
   HandThumbDownIcon as HandThumbDownIconSolid,
 } from '@heroicons/react/24/solid'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
 import type { FeedItem } from '@/types/feed'
+
+interface ActionButtonProps {
+  onClick?: () => void
+  isActive: boolean
+  activeColor: string
+  title: string
+  OutlineIcon: React.ComponentType<{ className?: string }>
+  SolidIcon: React.ComponentType<{ className?: string }>
+}
+
+function ActionButton({
+  onClick,
+  isActive,
+  activeColor,
+  title,
+  OutlineIcon,
+  SolidIcon,
+}: ActionButtonProps): React.ReactElement {
+  const Icon = isActive ? SolidIcon : OutlineIcon
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex-shrink-0 rounded p-1 transition-colors hover:bg-secondary',
+        isActive ? activeColor : `text-muted-foreground hover:${activeColor}`
+      )}
+      title={title}
+    >
+      <Icon className={cn('h-5 w-5', isActive && activeColor)} />
+    </button>
+  )
+}
 
 interface FeedCardProps {
   item: FeedItem
@@ -22,10 +54,7 @@ interface FeedCardProps {
 }
 
 export function FeedCard({ item, onToggleStar, onToggleLike, onToggleDislike }: FeedCardProps) {
-  const isRead = item.state.read
-  const isStarred = item.state.star
-  const isLiked = item.state.like
-  const isDisliked = item.state.dislike
+  const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked } = item.state
 
   return (
     <article
@@ -34,7 +63,6 @@ export function FeedCard({ item, onToggleStar, onToggleLike, onToggleDislike }: 
         isRead && 'opacity-60'
       )}
     >
-      {/* Header */}
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="flex-1">
           <a
@@ -60,71 +88,51 @@ export function FeedCard({ item, onToggleStar, onToggleLike, onToggleDislike }: 
         </div>
 
         <div className="flex items-center gap-1">
-          <button
+          <ActionButton
             onClick={() => onToggleLike?.(item)}
-            className={cn(
-              'flex-shrink-0 rounded p-1 transition-colors hover:bg-secondary',
-              isLiked ? 'text-green-500' : 'text-muted-foreground hover:text-green-500'
-            )}
+            isActive={isLiked}
+            activeColor="text-green-500"
             title="Like - stories from this source will rank higher"
-          >
-            {isLiked ? (
-              <HandThumbUpIconSolid className="h-5 w-5" />
-            ) : (
-              <HandThumbUpIcon className="h-5 w-5" />
-            )}
-          </button>
-
-          <button
+            OutlineIcon={HandThumbUpIcon}
+            SolidIcon={HandThumbUpIconSolid}
+          />
+          <ActionButton
             onClick={() => onToggleDislike?.(item)}
-            className={cn(
-              'flex-shrink-0 rounded p-1 transition-colors hover:bg-secondary',
-              isDisliked ? 'text-red-500' : 'text-muted-foreground hover:text-red-500'
-            )}
+            isActive={isDisliked}
+            activeColor="text-red-500"
             title="Dislike - stories from this source will rank lower"
-          >
-            {isDisliked ? (
-              <HandThumbDownIconSolid className="h-5 w-5" />
-            ) : (
-              <HandThumbDownIcon className="h-5 w-5" />
-            )}
-          </button>
-
-          <button
+            OutlineIcon={HandThumbDownIcon}
+            SolidIcon={HandThumbDownIconSolid}
+          />
+          <ActionButton
             onClick={() => onToggleStar?.(item)}
-            className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-feed-starred"
-          >
-            {isStarred ? (
-              <StarIconSolid className="h-5 w-5 text-feed-starred" />
-            ) : (
-              <StarIcon className="h-5 w-5" />
-            )}
-          </button>
+            isActive={isStarred}
+            activeColor="text-primary"
+            title="Save for later"
+            OutlineIcon={BookmarkIcon}
+            SolidIcon={BookmarkIconSolid}
+          />
         </div>
       </div>
 
-      {/* Summary */}
       {item.summary && (
         <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
           {truncate(item.summary, 200)}
         </p>
       )}
 
-      {/* Footer */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        {item.points !== null && item.points > 0 && (
+        {item.points != null && item.points > 0 && (
           <span className="flex items-center gap-1">
             <span className="font-medium text-foreground">{item.points}</span> points
           </span>
         )}
-
-        {item.views !== null && item.views > 0 && (
+        {item.views != null && item.views > 0 && (
           <span className="flex items-center gap-1">
             <EyeIcon className="h-3.5 w-3.5" />
             {item.views.toLocaleString()}
           </span>
         )}
-
         {item.comments_url && (
           <a
             href={item.comments_url}

@@ -79,62 +79,67 @@ class FeedStorage:
 
     def mark_as_read(self, user_id: int, item_id: int) -> bool:
         """Mark a user feed item as read."""
-        stmt = select(UserFeedItem).where(
-            and_(UserFeedItem.id == item_id, UserFeedItem.user_id == user_id)
-        )
-        item = self.db.execute(stmt).scalar_one_or_none()
-        if item:
-            item.state.read = True
-            self.db.commit()
-            return True
-        return False
+        item = self._get_user_feed_item(user_id, item_id)
+        if not item:
+            return False
+        item.state.read = True
+        self.db.commit()
+        return True
 
     def toggle_like(self, user_id: int, item_id: int) -> tuple[bool, str | None, bool]:
         """Toggle like state for a feed item.
 
         Returns: (success, source_name, new_like_state)
         """
-        stmt = select(UserFeedItem).where(
-            and_(UserFeedItem.id == item_id, UserFeedItem.user_id == user_id)
-        )
-        item = self.db.execute(stmt).scalar_one_or_none()
-        if item:
-            # If currently disliked, remove dislike first
-            if item.state.dislike:
-                item.state.dislike = False
-            # Toggle like
-            item.state.like = not item.state.like
-            self.db.commit()
-            return True, item.source_name, item.state.like
-        return False, None, False
+        item = self._get_user_feed_item(user_id, item_id)
+        if not item:
+            return False, None, False
+        # If currently disliked, remove dislike first
+        if item.state.dislike:
+            item.state.dislike = False
+        item.state.like = not item.state.like
+        self.db.commit()
+        return True, item.source_name, item.state.like
 
     def toggle_dislike(self, user_id: int, item_id: int) -> tuple[bool, str | None, bool]:
         """Toggle dislike state for a feed item.
 
         Returns: (success, source_name, new_dislike_state)
         """
-        stmt = select(UserFeedItem).where(
-            and_(UserFeedItem.id == item_id, UserFeedItem.user_id == user_id)
-        )
-        item = self.db.execute(stmt).scalar_one_or_none()
-        if item:
-            # If currently liked, remove like first
-            if item.state.like:
-                item.state.like = False
-            # Toggle dislike
-            item.state.dislike = not item.state.dislike
-            self.db.commit()
-            return True, item.source_name, item.state.dislike
-        return False, None, False
+        item = self._get_user_feed_item(user_id, item_id)
+        if not item:
+            return False, None, False
+        # If currently liked, remove like first
+        if item.state.like:
+            item.state.like = False
+        item.state.dislike = not item.state.dislike
+        self.db.commit()
+        return True, item.source_name, item.state.dislike
+
+    def toggle_star(self, user_id: int, item_id: int) -> tuple[bool, bool]:
+        """Toggle star (save for later) state for a feed item.
+
+        Returns: (success, new_star_state)
+        """
+        item = self._get_user_feed_item(user_id, item_id)
+        if not item:
+            return False, False
+        item.state.star = not item.state.star
+        self.db.commit()
+        return True, item.state.star
 
     def get_item(self, user_id: int, item_id: int) -> UserFeedItem | None:
         """Get a single user feed item."""
+        return self._get_user_feed_item(user_id, item_id)
+
+    # --- Private helpers ---
+
+    def _get_user_feed_item(self, user_id: int, item_id: int) -> UserFeedItem | None:
+        """Get a user feed item by user and item ID."""
         stmt = select(UserFeedItem).where(
             and_(UserFeedItem.id == item_id, UserFeedItem.user_id == user_id)
         )
         return self.db.execute(stmt).scalar_one_or_none()
-
-    # --- Private helpers ---
 
     def _get_or_create_feed(self, source_id: int) -> Feed:
         """Get or create a feed for a source."""

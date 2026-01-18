@@ -8,35 +8,31 @@ import { toast } from 'sonner'
 
 const USER_ID = 1 // TODO: Get from auth context
 
+function getInitialTheme(): boolean {
+  if (typeof window === 'undefined') return false
+  const saved = localStorage.getItem('theme')
+  if (saved === 'dark') return true
+  if (saved === 'light') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
 export default function SettingsPage() {
   const queryClient = useQueryClient()
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark')
-    }
-    return false
-  })
-
-  // Interest form state
+  const [isDark, setIsDark] = useState(getInitialTheme)
   const [newTopic, setNewTopic] = useState('')
   const [newWeight, setNewWeight] = useState(1.0)
-
-  // API key state
   const [apiKey, setApiKey] = useState('')
 
-  // Fetch interests
   const { data: interests = [], isLoading } = useQuery({
     queryKey: ['interests', USER_ID],
     queryFn: () => api.getInterests(USER_ID),
   })
 
-  // Fetch settings
   const { data: settings } = useQuery({
     queryKey: ['settings', USER_ID],
     queryFn: () => api.getSettings(USER_ID),
   })
 
-  // Add interest mutation
   const addInterestMutation = useMutation({
     mutationFn: (interest: UserInterestIn) => api.addInterest(USER_ID, interest),
     onSuccess: () => {
@@ -46,7 +42,6 @@ export default function SettingsPage() {
     },
   })
 
-  // Delete interest mutation
   const deleteInterestMutation = useMutation({
     mutationFn: (interestId: number) => api.deleteInterest(USER_ID, interestId),
     onSuccess: () => {
@@ -54,7 +49,6 @@ export default function SettingsPage() {
     },
   })
 
-  // Update settings mutation
   const updateSettingsMutation = useMutation({
     mutationFn: (settingsIn: UserSettingsIn) => api.updateSettings(USER_ID, settingsIn),
     onSuccess: () => {
@@ -67,43 +61,26 @@ export default function SettingsPage() {
     },
   })
 
-  const handleAddInterest = (e: React.FormEvent) => {
+  const handleAddInterest = (e: React.FormEvent): void => {
     e.preventDefault()
     if (newTopic.trim()) {
       addInterestMutation.mutate({ topic: newTopic.trim(), weight: newWeight })
     }
   }
 
-  const handleSaveApiKey = (e: React.FormEvent) => {
+  const handleSaveApiKey = (e: React.FormEvent): void => {
     e.preventDefault()
     updateSettingsMutation.mutate({ openai_api_key: apiKey || null })
   }
 
-  const handleRemoveApiKey = () => {
+  const handleRemoveApiKey = (): void => {
     updateSettingsMutation.mutate({ openai_api_key: '' })
   }
 
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark')
-      localStorage.setItem('theme', 'dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-      localStorage.setItem('theme', 'light')
-    }
+    document.documentElement.classList.toggle('dark', isDark)
+    localStorage.setItem('theme', isDark ? 'dark' : 'light')
   }, [isDark])
-
-  // Initialize theme from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('theme')
-    if (saved === 'dark') {
-      setIsDark(true)
-    } else if (saved === 'light') {
-      setIsDark(false)
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setIsDark(true)
-    }
-  }, [])
 
   return (
     <div>

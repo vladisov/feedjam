@@ -1,6 +1,5 @@
 """Reddit feed parser."""
 
-from datetime import datetime
 from urllib.parse import urlparse
 
 import feedparser
@@ -67,16 +66,7 @@ class RedditParser(BaseParser):
         if hasattr(entry, "summary"):
             description = entry.summary
 
-        # Parse published date
-        published = None
-        if hasattr(entry, "published_parsed") and entry.published_parsed:
-            try:
-                published = datetime(*entry.published_parsed[:6])
-            except (TypeError, ValueError):
-                pass
-
-        if not published:
-            published = datetime.now()
+        published = self._parse_published_date(entry)
 
         # Extract score/points from title if available (Reddit format: "[score] title")
         points = 0

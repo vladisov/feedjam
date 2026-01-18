@@ -1,6 +1,5 @@
 """YouTube feed parser."""
 
-from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
 import feedparser
@@ -98,16 +97,7 @@ class YouTubeParser(BaseParser):
         elif hasattr(entry, "media_description"):
             description = entry.media_description
 
-        # Parse published date
-        published = None
-        if hasattr(entry, "published_parsed") and entry.published_parsed:
-            try:
-                published = datetime(*entry.published_parsed[:6])
-            except (TypeError, ValueError):
-                pass
-
-        if not published:
-            published = datetime.now()
+        published = self._parse_published_date(entry)
 
         # YouTube-specific: views from media statistics
         views = 0

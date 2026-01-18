@@ -126,6 +126,13 @@ class FeedService:
 
         return {"disliked": is_disliked}
 
+    def toggle_star(self, user_id: int, item_id: int) -> dict:
+        """Toggle star (save for later) for a feed item."""
+        success, is_starred = self.feed_storage.toggle_star(user_id, item_id)
+        if not success:
+            raise EntityNotFoundException("FeedItem", item_id)
+        return {"starred": is_starred}
+
     def _get_unread_items(self, active_feed: UserFeedOut | None) -> list[UserFeedItemIn]:
         """Get unread items from the active feed."""
         if not active_feed:
