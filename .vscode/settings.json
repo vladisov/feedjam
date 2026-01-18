@@ -1,0 +1,27 @@
+{
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.autopep8"
+  },
+  "python.formatting.provider": "none",
+  "cSpell.words": [
+    "autouse",
+    "dateutil",
+    "feeditem",
+    "feedjam",
+    "joinedload",
+    "openai",
+    "poolclass",
+    "pydantic",
+    "redakciya",
+    "starlette"
+  ],
+  "python.analysis.typeCheckingMode": "basic",
+  "python.linting.enabled": false,
+  "python.linting.flake8Enabled": false,
+  "python.linting.flake8Args": ["--max-line-length=120"],
+  "python.analysis.extraPaths": ["./service", "./src"],
+  "python.testing.pytestArgs": ["src"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.linting.pylintEnabled": true
+}

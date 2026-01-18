@@ -1,0 +1,12 @@
+# .vscode
+feedenv
+__pycache__
+web/.next
+web/node_modules
+*.log
+sqlite_feedjam.db
+feedjam.egg-info
+sqlite_feedjam.db
+.idea
+*.iml
+**/.pytest_cache.DS_Store
