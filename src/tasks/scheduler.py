@@ -3,17 +3,25 @@
 Handles periodic tasks like fetching subscriptions and generating feeds.
 """
 
-import logging
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from repository.db import get_db_session
+from repository.subscription_storage import SubscriptionStorage
+from repository.user_storage import UserStorage
 from schemas import SubscriptionUpdate
 from service.factory import ServiceFactory
+from utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
+
+def _create_factory_with_user_key(db, user_id: int) -> ServiceFactory:
+    """Create a ServiceFactory configured with the user's API key."""
+    user_api_key = UserStorage(db).get_openai_key(user_id)
+    return ServiceFactory(db, openai_key=user_api_key)
 
 scheduler = BackgroundScheduler()
 
@@ -21,16 +29,15 @@ scheduler = BackgroundScheduler()
 def fetch_subscription(subscription_id: int) -> bool:
     """Fetch and save feed items for a single subscription."""
     with get_db_session() as db:
-        factory = ServiceFactory(db)
+        subscription = SubscriptionStorage(db).get(subscription_id)
+        if not subscription:
+            logger.error(f"Subscription {subscription_id} not found")
+            return False
+
+        factory = _create_factory_with_user_key(db, subscription.user_id)
 
         try:
-            subscription = factory.subscription_storage.get(subscription_id)
-            if not subscription:
-                logger.error(f"Subscription {subscription_id} not found")
-                return False
-
             factory.feed_service.fetch_and_save_items(subscription_id)
-
             factory.subscription_storage.update(
                 subscription_id,
                 SubscriptionUpdate(is_active=True, last_run=datetime.now()),
@@ -46,7 +53,7 @@ def fetch_subscription(subscription_id: int) -> bool:
 def generate_user_feed(user_id: int) -> bool:
     """Generate personalized feed for a user."""
     with get_db_session() as db:
-        factory = ServiceFactory(db)
+        factory = _create_factory_with_user_key(db, user_id)
 
         try:
             factory.feed_service.generate_user_feed(user_id)

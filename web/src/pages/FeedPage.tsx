@@ -4,15 +4,23 @@ import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { FeedList } from '@/components/feed/FeedList'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
-import { ArrowPathIcon, BookmarkIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, BookmarkIcon, Bars3BottomLeftIcon } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api'
-import type { FeedItem } from '@/types/feed'
 import { cn } from '@/lib/utils'
+import type { FeedItem } from '@/types/feed'
 
 // TODO: Make this configurable or remove when multi-user
 const DEFAULT_USER_ID = 1
 
 type FeedTab = 'all' | 'saved'
+
+const TAB_BASE_STYLES = 'px-4 py-2 text-sm font-medium transition-colors'
+const TAB_ACTIVE_STYLES = 'border-b-2 border-primary text-primary'
+const TAB_INACTIVE_STYLES = 'text-muted-foreground hover:text-foreground'
+
+function getTabStyles(isActive: boolean): string {
+  return cn(TAB_BASE_STYLES, isActive ? TAB_ACTIVE_STYLES : TAB_INACTIVE_STYLES)
+}
 
 function useFeedItemMutation(
   mutationFn: (item: FeedItem) => Promise<unknown>
@@ -27,8 +35,14 @@ function useFeedItemMutation(
   return mutation.mutate
 }
 
+function getInitialShowSummaries(): boolean {
+  if (typeof window === 'undefined') return true
+  return localStorage.getItem('feedShowSummaries') !== 'false'
+}
+
 export default function FeedPage() {
   const [activeTab, setActiveTab] = useState<FeedTab>('all')
+  const [showSummaries, setShowSummaries] = useState(getInitialShowSummaries)
   const { items, isLoading, error, refetch } = useFeedQuery({
     userId: DEFAULT_USER_ID,
   })
@@ -43,14 +57,18 @@ export default function FeedPage() {
     api.toggleStar(DEFAULT_USER_ID, item.id)
   )
 
-  const filteredItems = useMemo(() => {
-    if (activeTab === 'saved') {
-      return items.filter((item) => item.state.star)
-    }
-    return items
-  }, [items, activeTab])
+  const filteredItems = useMemo(
+    () => (activeTab === 'saved' ? items.filter((item) => item.state.star) : items),
+    [items, activeTab]
+  )
 
   const savedCount = useMemo(() => items.filter((item) => item.state.star).length, [items])
+
+  const toggleShowSummaries = () => {
+    const newValue = !showSummaries
+    setShowSummaries(newValue)
+    localStorage.setItem('feedShowSummaries', String(newValue))
+  }
 
   if (isLoading && items.length === 0) {
     return <PageLoader />
@@ -78,38 +96,36 @@ export default function FeedPage() {
             {filteredItems.length} items
           </p>
         </div>
-        <Button
-          onClick={() => refetch()}
-          variant="ghost"
-          size="sm"
-          className="gap-2"
-        >
-          <ArrowPathIcon className="h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            onClick={toggleShowSummaries}
+            variant="ghost"
+            size="sm"
+            className={cn('gap-2', !showSummaries && 'text-muted-foreground')}
+            title={showSummaries ? 'Hide summaries' : 'Show summaries'}
+          >
+            <Bars3BottomLeftIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            onClick={() => refetch()}
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+          >
+            <ArrowPathIcon className="h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
       <div className="mb-4 flex gap-1 border-b border-border">
-        <button
-          onClick={() => setActiveTab('all')}
-          className={cn(
-            'px-4 py-2 text-sm font-medium transition-colors',
-            activeTab === 'all'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
+        <button onClick={() => setActiveTab('all')} className={getTabStyles(activeTab === 'all')}>
           All
         </button>
         <button
           onClick={() => setActiveTab('saved')}
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors',
-            activeTab === 'saved'
-              ? 'border-b-2 border-primary text-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
+          className={cn(getTabStyles(activeTab === 'saved'), 'flex items-center gap-1.5')}
         >
           <BookmarkIcon className="h-4 w-4" />
           Saved
@@ -124,6 +140,7 @@ export default function FeedPage() {
       {/* Feed list */}
       <FeedList
         items={filteredItems}
+        showSummaries={showSummaries}
         onToggleStar={handleToggleStar}
         onToggleLike={handleToggleLike}
         onToggleDislike={handleToggleDislike}

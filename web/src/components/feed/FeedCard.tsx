@@ -37,7 +37,7 @@ function ActionButton({
       onClick={onClick}
       className={cn(
         'flex-shrink-0 rounded p-1 transition-colors hover:bg-secondary',
-        isActive ? activeColor : `text-muted-foreground hover:${activeColor}`
+        isActive ? activeColor : 'text-muted-foreground'
       )}
       title={title}
     >
@@ -48,12 +48,13 @@ function ActionButton({
 
 interface FeedCardProps {
   item: FeedItem
+  showSummary?: boolean
   onToggleStar?: (item: FeedItem) => void
   onToggleLike?: (item: FeedItem) => void
   onToggleDislike?: (item: FeedItem) => void
 }
 
-export function FeedCard({ item, onToggleStar, onToggleLike, onToggleDislike }: FeedCardProps) {
+export function FeedCard({ item, showSummary = true, onToggleStar, onToggleLike, onToggleDislike }: FeedCardProps) {
   const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked } = item.state
 
   return (
@@ -115,7 +116,7 @@ export function FeedCard({ item, onToggleStar, onToggleLike, onToggleDislike }: 
         </div>
       </div>
 
-      {item.summary && (
+      {showSummary && item.summary && (
         <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
           {truncate(item.summary, 200)}
         </p>

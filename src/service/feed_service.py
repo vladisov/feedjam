@@ -1,7 +1,5 @@
 """Feed service - handles feed fetching and generation."""
 
-import logging
-
 from api.exceptions import EntityNotFoundException, ParserNotFoundException
 from repository.feed_storage import FeedStorage
 from repository.like_history_storage import LikeHistoryStorage
@@ -13,8 +11,9 @@ from service.content_processor import ContentProcessor
 from service.parser import get_parser_for_source
 from service.ranking_service import RankingService
 from utils import config
+from utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FeedService:

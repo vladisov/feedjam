@@ -5,8 +5,7 @@ Replaces DataExtractor with efficient batched processing.
 
 from schemas import FeedItemIn
 from service.extractor.extractor_strategy import get_extractor
-from service.llm import ContentItem, LLMCache, LLMConfig, LLMService, OpenAIProvider
-from utils import config
+from service.llm import ContentItem, LLMService
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -21,34 +20,13 @@ class ContentProcessor:
     - Graceful degradation when LLM unavailable
     """
 
-    def __init__(self, llm_service: LLMService | None = None):
+    def __init__(self, llm_service: LLMService):
         """Initialize processor.
 
         Args:
-            llm_service: Optional pre-configured LLMService.
-                        If None, creates one from environment config.
+            llm_service: Configured LLMService instance.
         """
-        if llm_service:
-            self.llm = llm_service
-        else:
-            # Create from environment config
-            provider = OpenAIProvider(
-                api_key=config.OPEN_AI_KEY,
-                model=config.LLM_MODEL,
-                embedding_model=config.LLM_EMBEDDING_MODEL,
-            )
-            cache = LLMCache(
-                redis_url=config.REDIS_URL,
-                enabled=bool(config.REDIS_URL),
-            )
-            llm_config = LLMConfig(
-                model=config.LLM_MODEL,
-                embedding_model=config.LLM_EMBEDDING_MODEL,
-                batch_size=config.LLM_BATCH_SIZE,
-                cache_ttl_summary=config.LLM_CACHE_TTL,
-                enabled=bool(config.OPEN_AI_KEY),
-            )
-            self.llm = LLMService(provider, cache, llm_config)
+        self.llm = llm_service
 
     def process_items(self, items: list[FeedItemIn]) -> list[FeedItemIn]:
         """Process feed items: add summaries, topics, quality scores.
@@ -134,9 +112,3 @@ class ContentProcessor:
         ]
 
         return self.llm.get_embeddings(texts, hashes)
-
-
-# Factory function for easy creation
-def create_content_processor() -> ContentProcessor:
-    """Create a ContentProcessor with default configuration."""
-    return ContentProcessor()

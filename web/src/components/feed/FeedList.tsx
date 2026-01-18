@@ -3,12 +3,13 @@ import type { FeedItem } from '@/types/feed'
 
 interface FeedListProps {
   items: FeedItem[]
+  showSummaries?: boolean
   onToggleStar?: (item: FeedItem) => void
   onToggleLike?: (item: FeedItem) => void
   onToggleDislike?: (item: FeedItem) => void
 }
 
-export function FeedList({ items, onToggleStar, onToggleLike, onToggleDislike }: FeedListProps) {
+export function FeedList({ items, showSummaries = true, onToggleStar, onToggleLike, onToggleDislike }: FeedListProps) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -26,6 +27,7 @@ export function FeedList({ items, onToggleStar, onToggleLike, onToggleDislike }:
         <FeedCard
           key={item.id}
           item={item}
+          showSummary={showSummaries}
           onToggleStar={onToggleStar}
           onToggleLike={onToggleLike}
           onToggleDislike={onToggleDislike}
