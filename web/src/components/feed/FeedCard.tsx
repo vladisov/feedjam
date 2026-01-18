@@ -5,6 +5,7 @@ import {
   EyeIcon,
   HandThumbUpIcon,
   HandThumbDownIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import {
   BookmarkIcon as BookmarkIconSolid,
@@ -52,10 +53,30 @@ interface FeedCardProps {
   onToggleStar?: (item: FeedItem) => void
   onToggleLike?: (item: FeedItem) => void
   onToggleDislike?: (item: FeedItem) => void
+  onMarkRead?: (item: FeedItem) => void
+  onToggleHide?: (item: FeedItem) => void
 }
 
-export function FeedCard({ item, showSummary = true, onToggleStar, onToggleLike, onToggleDislike }: FeedCardProps) {
+export function FeedCard({
+  item,
+  showSummary = true,
+  onToggleStar,
+  onToggleLike,
+  onToggleDislike,
+  onMarkRead,
+  onToggleHide,
+}: FeedCardProps) {
   const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked } = item.state
+
+  const handleArticleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    if (item.article_url) {
+      window.open(item.article_url, '_blank', 'noopener,noreferrer')
+    }
+    if (!isRead) {
+      onMarkRead?.(item)
+    }
+  }
 
   return (
     <article
@@ -71,6 +92,7 @@ export function FeedCard({ item, showSummary = true, onToggleStar, onToggleLike,
             target="_blank"
             rel="noopener noreferrer"
             className="group/link inline-flex items-start gap-1"
+            onClick={handleArticleClick}
           >
             <h3
               className={cn(
@@ -113,6 +135,13 @@ export function FeedCard({ item, showSummary = true, onToggleStar, onToggleLike,
             OutlineIcon={BookmarkIcon}
             SolidIcon={BookmarkIconSolid}
           />
+          <button
+            onClick={() => onToggleHide?.(item)}
+            className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            title="Hide"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
         </div>
       </div>
 

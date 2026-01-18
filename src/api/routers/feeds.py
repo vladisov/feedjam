@@ -74,3 +74,31 @@ def toggle_star(
 ):
     """Toggle star (save for later) for a feed item."""
     return feed_service.toggle_star(user_id, item_id)
+
+
+@router.post("/{user_id}/items/{item_id}/hide")
+def toggle_hide(
+    user_id: int,
+    item_id: int,
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    """Toggle hide for a feed item."""
+    return feed_service.toggle_hide(user_id, item_id)
+
+
+@router.post("/{user_id}/hide-read")
+def hide_read_items(
+    user_id: int,
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    """Hide all read items for a user."""
+    return feed_service.hide_read_items(user_id)
+
+
+@router.post("/{user_id}/mark-all-read")
+def mark_all_read(
+    user_id: int,
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    """Mark all unread items as read for a user."""
+    return feed_service.mark_all_read(user_id)

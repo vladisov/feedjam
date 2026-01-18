@@ -132,6 +132,23 @@ class FeedService:
             raise EntityNotFoundException("FeedItem", item_id)
         return {"starred": is_starred}
 
+    def toggle_hide(self, user_id: int, item_id: int) -> dict:
+        """Toggle hide for a feed item."""
+        success, is_hidden = self.feed_storage.toggle_hide(user_id, item_id)
+        if not success:
+            raise EntityNotFoundException("FeedItem", item_id)
+        return {"hidden": is_hidden}
+
+    def hide_read_items(self, user_id: int) -> dict:
+        """Hide all read items for a user."""
+        count = self.feed_storage.hide_read_items(user_id)
+        return {"hidden_count": count}
+
+    def mark_all_read(self, user_id: int) -> dict:
+        """Mark all unread items as read for a user."""
+        count = self.feed_storage.mark_all_read(user_id)
+        return {"read_count": count}
+
     def _get_unread_items(self, active_feed: UserFeedOut | None) -> list[UserFeedItemIn]:
         """Get unread items from the active feed."""
         if not active_feed:

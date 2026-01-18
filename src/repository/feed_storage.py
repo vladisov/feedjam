@@ -128,6 +128,66 @@ class FeedStorage:
         self.db.commit()
         return True, item.state.star
 
+    def toggle_hide(self, user_id: int, item_id: int) -> tuple[bool, bool]:
+        """Toggle hide state for a feed item.
+
+        Returns: (success, new_hide_state)
+        """
+        item = self._get_user_feed_item(user_id, item_id)
+        if not item:
+            return False, False
+        item.state.hide = not item.state.hide
+        self.db.commit()
+        return True, item.state.hide
+
+    def hide_read_items(self, user_id: int) -> int:
+        """Hide all read items for a user.
+
+        Returns: count of items hidden
+        """
+        stmt = (
+            select(UserFeedItem)
+            .join(UserFeedItemState)
+            .join(UserFeed)
+            .where(
+                and_(
+                    UserFeed.user_id == user_id,
+                    UserFeed.is_active == True,
+                    UserFeedItemState.read == True,
+                    UserFeedItemState.hide == False,
+                )
+            )
+        )
+        items = self.db.execute(stmt).scalars().all()
+        for item in items:
+            item.state.hide = True
+        self.db.commit()
+        return len(items)
+
+    def mark_all_read(self, user_id: int) -> int:
+        """Mark all unread items as read for a user.
+
+        Returns: count of items marked as read
+        """
+        stmt = (
+            select(UserFeedItem)
+            .join(UserFeedItemState)
+            .join(UserFeed)
+            .where(
+                and_(
+                    UserFeed.user_id == user_id,
+                    UserFeed.is_active == True,
+                    UserFeedItemState.read == False,
+                    UserFeedItemState.hide == False,
+                )
+            )
+        )
+        items = self.db.execute(stmt).scalars().all()
+        for item in items:
+            item.state.read = True
+        self.db.commit()
+        return len(items)
+
     def get_item(self, user_id: int, item_id: int) -> UserFeedItem | None:
         """Get a single user feed item."""
         return self._get_user_feed_item(user_id, item_id)

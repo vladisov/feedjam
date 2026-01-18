@@ -4,7 +4,7 @@ import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { FeedList } from '@/components/feed/FeedList'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
-import { ArrowPathIcon, BookmarkIcon, Bars3BottomLeftIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, BookmarkIcon, Bars3BottomLeftIcon, EyeSlashIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import type { FeedItem } from '@/types/feed'
@@ -47,6 +47,8 @@ export default function FeedPage() {
     userId: DEFAULT_USER_ID,
   })
 
+  const queryClient = useQueryClient()
+
   const handleToggleLike = useFeedItemMutation((item) =>
     api.toggleLike(DEFAULT_USER_ID, item.id)
   )
@@ -56,13 +58,37 @@ export default function FeedPage() {
   const handleToggleStar = useFeedItemMutation((item) =>
     api.toggleStar(DEFAULT_USER_ID, item.id)
   )
-
-  const filteredItems = useMemo(
-    () => (activeTab === 'saved' ? items.filter((item) => item.state.star) : items),
-    [items, activeTab]
+  const handleMarkRead = useFeedItemMutation((item) =>
+    api.markRead(DEFAULT_USER_ID, item.id)
+  )
+  const handleToggleHide = useFeedItemMutation((item) =>
+    api.toggleHide(DEFAULT_USER_ID, item.id)
   )
 
-  const savedCount = useMemo(() => items.filter((item) => item.state.star).length, [items])
+  const hideReadMutation = useMutation({
+    mutationFn: () => api.hideRead(DEFAULT_USER_ID),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed', DEFAULT_USER_ID] })
+    },
+  })
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => api.markAllRead(DEFAULT_USER_ID),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed', DEFAULT_USER_ID] })
+    },
+  })
+
+  // Filter out hidden items, then apply tab filter
+  const visibleItems = useMemo(() => items.filter((item) => !item.state.hide), [items])
+  const filteredItems = useMemo(
+    () => (activeTab === 'saved' ? visibleItems.filter((item) => item.state.star) : visibleItems),
+    [visibleItems, activeTab]
+  )
+
+  const savedCount = useMemo(() => visibleItems.filter((item) => item.state.star).length, [visibleItems])
+  const readCount = useMemo(() => visibleItems.filter((item) => item.state.read).length, [visibleItems])
+  const unreadCount = useMemo(() => visibleItems.filter((item) => !item.state.read).length, [visibleItems])
 
   const toggleShowSummaries = () => {
     const newValue = !showSummaries
@@ -97,6 +123,32 @@ export default function FeedPage() {
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {unreadCount > 0 && (
+            <Button
+              onClick={() => markAllReadMutation.mutate()}
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+              disabled={markAllReadMutation.isPending}
+              title="Mark all items as read"
+            >
+              <CheckIcon className="h-4 w-4" />
+              Mark all read
+            </Button>
+          )}
+          {readCount > 0 && (
+            <Button
+              onClick={() => hideReadMutation.mutate()}
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+              disabled={hideReadMutation.isPending}
+              title="Hide all read items"
+            >
+              <EyeSlashIcon className="h-4 w-4" />
+              Hide read ({readCount})
+            </Button>
+          )}
           <Button
             onClick={toggleShowSummaries}
             variant="ghost"
@@ -144,6 +196,8 @@ export default function FeedPage() {
         onToggleStar={handleToggleStar}
         onToggleLike={handleToggleLike}
         onToggleDislike={handleToggleDislike}
+        onMarkRead={handleMarkRead}
+        onToggleHide={handleToggleHide}
       />
     </div>
   )

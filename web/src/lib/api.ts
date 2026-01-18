@@ -62,6 +62,15 @@ export const api = {
   toggleStar: (userId: number, itemId: number): Promise<{ starred: boolean }> =>
     post(`${API_URL}/feed/${userId}/items/${itemId}/star`),
 
+  toggleHide: (userId: number, itemId: number): Promise<{ hidden: boolean }> =>
+    post(`${API_URL}/feed/${userId}/items/${itemId}/hide`),
+
+  hideRead: (userId: number): Promise<{ hidden_count: number }> =>
+    post(`${API_URL}/feed/${userId}/hide-read`),
+
+  markAllRead: (userId: number): Promise<{ read_count: number }> =>
+    post(`${API_URL}/feed/${userId}/mark-all-read`),
+
   // Subscriptions
   getSubscriptions: (userId: number): Promise<Subscription[]> =>
     get(`${API_URL}/subscriptions?user_id=${userId}`),

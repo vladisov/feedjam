@@ -7,9 +7,19 @@ interface FeedListProps {
   onToggleStar?: (item: FeedItem) => void
   onToggleLike?: (item: FeedItem) => void
   onToggleDislike?: (item: FeedItem) => void
+  onMarkRead?: (item: FeedItem) => void
+  onToggleHide?: (item: FeedItem) => void
 }
 
-export function FeedList({ items, showSummaries = true, onToggleStar, onToggleLike, onToggleDislike }: FeedListProps) {
+export function FeedList({
+  items,
+  showSummaries = true,
+  onToggleStar,
+  onToggleLike,
+  onToggleDislike,
+  onMarkRead,
+  onToggleHide,
+}: FeedListProps) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -31,6 +41,8 @@ export function FeedList({ items, showSummaries = true, onToggleStar, onToggleLi
           onToggleStar={onToggleStar}
           onToggleLike={onToggleLike}
           onToggleDislike={onToggleDislike}
+          onMarkRead={onMarkRead}
+          onToggleHide={onToggleHide}
         />
       ))}
     </div>
