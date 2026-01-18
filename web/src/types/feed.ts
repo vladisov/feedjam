@@ -58,3 +58,11 @@ export interface UserInterestIn {
   weight: number
 }
 
+export interface UserSettings {
+  has_openai_key: boolean
+}
+
+export interface UserSettingsIn {
+  openai_api_key?: string | null
+}
+

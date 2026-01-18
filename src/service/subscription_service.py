@@ -59,3 +59,7 @@ class SubscriptionService:
     def get_all(self) -> list[SubscriptionOut]:
         """Get all active subscriptions."""
         return [SubscriptionOut.model_validate(s) for s in self.subscription_storage.get_active()]
+
+    def delete(self, subscription_id: int) -> bool:
+        """Delete a subscription."""
+        return self.subscription_storage.delete(subscription_id)

@@ -20,3 +20,21 @@ class UserOut(BaseModel):
     handle: str
     is_active: bool
     created_at: datetime
+
+
+class UserSettingsIn(BaseModel):
+    """Input schema for updating user settings."""
+
+    openai_api_key: str | None = None
+
+
+class UserSettingsOut(BaseModel):
+    """Output schema for user settings (masks sensitive data)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    has_openai_key: bool = False
+
+    @classmethod
+    def from_user(cls, user) -> "UserSettingsOut":
+        return cls(has_openai_key=bool(user.openai_api_key))

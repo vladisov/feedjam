@@ -34,6 +34,17 @@ export function useSubscriptionsQuery({ userId, enabled = true }: UseSubscriptio
     },
   })
 
+  const deleteSubscription = useMutation({
+    mutationFn: (subscriptionId: number) => api.deleteSubscription(subscriptionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions', userId] })
+      toast.success('Subscription removed')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to remove subscription')
+    },
+  })
+
   return {
     subscriptions: subscriptions || [],
     isLoading,
@@ -41,5 +52,7 @@ export function useSubscriptionsQuery({ userId, enabled = true }: UseSubscriptio
     refetch,
     addSubscription: addSubscription.mutate,
     isAdding: addSubscription.isPending,
+    deleteSubscription: deleteSubscription.mutate,
+    isDeleting: deleteSubscription.isPending,
   }
 }

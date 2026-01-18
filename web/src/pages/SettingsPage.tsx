@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/shared/Button'
-import { SunIcon, MoonIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { SunIcon, MoonIcon, PlusIcon, XMarkIcon, CheckIcon, KeyIcon } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api'
-import type { UserInterest, UserInterestIn } from '@/types/feed'
+import type { UserInterest, UserInterestIn, UserSettingsIn } from '@/types/feed'
+import { toast } from 'sonner'
 
 const USER_ID = 1 // TODO: Get from auth context
 
@@ -20,10 +21,19 @@ export default function SettingsPage() {
   const [newTopic, setNewTopic] = useState('')
   const [newWeight, setNewWeight] = useState(1.0)
 
+  // API key state
+  const [apiKey, setApiKey] = useState('')
+
   // Fetch interests
   const { data: interests = [], isLoading } = useQuery({
     queryKey: ['interests', USER_ID],
     queryFn: () => api.getInterests(USER_ID),
+  })
+
+  // Fetch settings
+  const { data: settings } = useQuery({
+    queryKey: ['settings', USER_ID],
+    queryFn: () => api.getSettings(USER_ID),
   })
 
   // Add interest mutation
@@ -44,11 +54,33 @@ export default function SettingsPage() {
     },
   })
 
+  // Update settings mutation
+  const updateSettingsMutation = useMutation({
+    mutationFn: (settingsIn: UserSettingsIn) => api.updateSettings(USER_ID, settingsIn),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings', USER_ID] })
+      setApiKey('')
+      toast.success('API key saved')
+    },
+    onError: () => {
+      toast.error('Failed to save API key')
+    },
+  })
+
   const handleAddInterest = (e: React.FormEvent) => {
     e.preventDefault()
     if (newTopic.trim()) {
       addInterestMutation.mutate({ topic: newTopic.trim(), weight: newWeight })
     }
+  }
+
+  const handleSaveApiKey = (e: React.FormEvent) => {
+    e.preventDefault()
+    updateSettingsMutation.mutate({ openai_api_key: apiKey || null })
+  }
+
+  const handleRemoveApiKey = () => {
+    updateSettingsMutation.mutate({ openai_api_key: '' })
   }
 
   useEffect(() => {
@@ -146,6 +178,66 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* API Keys */}
+        <section className="rounded-lg border border-border bg-card p-6">
+          <h3 className="mb-4 text-lg font-medium text-foreground">API Keys</h3>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Provide your own API keys for AI-powered features like summarization and intelligent ranking.
+          </p>
+
+          <div className="space-y-4">
+            {/* OpenAI API Key */}
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">
+                OpenAI API Key
+              </label>
+              {settings?.has_openai_key ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-1 items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
+                    <KeyIcon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Key configured</span>
+                    <CheckIcon className="h-4 w-4 text-green-500" />
+                  </div>
+                  <Button
+                    variant="secondary"
+                    onClick={handleRemoveApiKey}
+                    disabled={updateSettingsMutation.isPending}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleSaveApiKey} className="flex gap-2">
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-..."
+                    className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={!apiKey.trim() || updateSettingsMutation.isPending}
+                  >
+                    Save
+                  </Button>
+                </form>
+              )}
+              <p className="mt-2 text-xs text-muted-foreground">
+                Get your API key from{' '}
+                <a
+                  href="https://platform.openai.com/api-keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  platform.openai.com
+                </a>
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* Appearance */}

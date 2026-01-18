@@ -33,6 +33,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${API_PORT:-8001}:8000"
+      - "${DEBUG_PORT:-5679}:5678"  # debugpy
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-feedjam}:${POSTGRES_PASSWORD:-feedjam}@db:5432/${POSTGRES_DB:-feedjam}
       REDIS_URL: redis://redis:6379/0

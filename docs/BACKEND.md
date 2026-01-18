@@ -24,7 +24,9 @@ feedjam/
 │   ├── repository/         # Data access layer (one per model)
 │   ├── schemas/            # Pydantic schemas with In/Out naming
 │   ├── service/            # Business logic layer
+│   │   ├── llm/            # LLM integration (caching, batching, providers)
 │   │   ├── parser/         # Source-specific parsers
+│   │   ├── content_processor.py  # Content enrichment via LLM
 │   │   └── factory.py      # ServiceFactory for background tasks
 │   ├── tasks/              # APScheduler background tasks
 │   ├── utils/
@@ -125,11 +127,11 @@ def get_feed(user_id: int, feed_service: FeedService = Depends(get_feed_service)
 
 Use ServiceFactory directly:
 ```python
-from repository.db import get_db_session
+from repository.db import get_db
 from service.factory import ServiceFactory
 
 def scheduled_feed_fetch():
-    with get_db_session() as db:
+    with get_db() as db:
         factory = ServiceFactory(db)
         factory.feed_service.fetch_all_feeds()
 ```
@@ -150,7 +152,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 ```
 
 ### Background Tasks & Startup (Context Manager)
-Use `get_db_session()` - manual transaction control:
+Use `get_db_session()` context manager:
 ```python
 from repository.db import get_db_session
 
@@ -204,12 +206,13 @@ class FeedService:
         feed_storage: FeedStorage,
         subscription_storage: SubscriptionStorage,
         source_storage: SourceStorage,
-        data_extractor: DataExtractor,
+        content_processor: ContentProcessor,
         ranking_service: RankingService,
         like_history_storage: LikeHistoryStorage,
     ):
         self.feed_storage = feed_storage
         self.subscription_storage = subscription_storage
+        self.content_processor = content_processor
         # ... etc
 
     def get_feed(self, user_id: int) -> UserFeedOut:
@@ -261,7 +264,7 @@ from service.factory import ServiceFactory
 
 def fetch_feeds_job():
     """Each task creates fresh session via ServiceFactory."""
-    with get_db_session() as db:
+    with get_db() as db:
         factory = ServiceFactory(db)
         try:
             factory.feed_service.fetch_all_feeds()
@@ -408,31 +411,114 @@ poetry run alembic downgrade -1
 poetry run alembic current
 ```
 
-## External Service Integration
+## LLM Service Architecture
 
-For API integrations (OpenAI, etc.):
+The LLM integration (`src/service/llm/`) provides content processing with caching and batching for efficiency.
 
-```python
-class DataExtractor:
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.client = OpenAI(api_key=api_key)
-
-    def summarize(self, content: str) -> str | None:
-        """Graceful degradation - returns None on failure."""
-        try:
-            response = self.client.chat.completions.create(...)
-            return response.choices[0].message.content
-        except Exception as e:
-            logger.warning(f"Summarization failed: {e}")
-            return None
+### Directory Structure
+```
+service/llm/
+├── __init__.py      # Exports
+├── config.py        # LLMConfig, ProcessedContent dataclasses
+├── provider.py      # LLMProvider ABC + OpenAIProvider
+├── cache.py         # Redis caching layer
+├── batcher.py       # Token-aware request batching
+├── prompts.py       # Prompt templates
+└── service.py       # Main LLMService class
 ```
 
-### Guidelines
-- Inject API keys via constructor
-- Log failures but don't crash
-- Return None or default for optional features
-- Consider feature flags for expensive operations
+### LLMProvider (Abstract)
+```python
+class LLMProvider(ABC):
+    @abstractmethod
+    def complete(self, prompt: str, system: str | None = None) -> str | None:
+        """Generate completion for prompt."""
+        ...
+
+    @abstractmethod
+    def get_embeddings(self, texts: list[str]) -> list[list[float]]:
+        """Get embeddings for semantic similarity."""
+        ...
+```
+
+### LLMService
+Orchestrates caching, batching, and provider calls:
+```python
+class LLMService:
+    def __init__(self, provider: LLMProvider, cache: LLMCache, config: LLMConfig):
+        self.provider = provider
+        self.cache = cache
+        self.config = config
+
+    def process_items(self, items: list[FeedItemIn]) -> list[ProcessedContent]:
+        # 1. Check cache for existing results
+        # 2. Batch uncached items (10 per request)
+        # 3. Single LLM call per batch (summary + topics + quality)
+        # 4. Cache results (7-day TTL)
+        # 5. Return enriched content
+```
+
+### ContentProcessor
+High-level interface used by FeedService:
+```python
+class ContentProcessor:
+    def __init__(self, llm_service: LLMService | None = None):
+        # Auto-creates LLMService from env config if not provided
+
+    def process_items(self, items: list[FeedItemIn]) -> list[FeedItemIn]:
+        """Enrich items with summaries, topics, quality scores."""
+        ...
+
+    def get_embeddings(self, items: list[FeedItemIn]) -> list[list[float]]:
+        """Get embeddings for semantic ranking."""
+        ...
+```
+
+### Usage in FeedService
+```python
+def fetch_and_save_items(self, subscription_id: int):
+    items = parser.parse(source)
+    if config.ENABLE_SUMMARIZATION and items:
+        items = self.content_processor.process_items(items)
+    # ... save items
+```
+
+### Efficiency Features
+- **Batching**: 10 items per LLM request (configurable via `LLM_BATCH_SIZE`)
+- **Caching**: 7-day Redis cache keyed by content hash (configurable via `LLM_CACHE_TTL`)
+- **Combined prompts**: Single call extracts summary + topics + quality score
+- **Graceful degradation**: Returns original items if LLM fails
+
+## User Settings & API Keys
+
+Users can provide their own API keys for AI-powered features.
+
+### Model
+```python
+class User(Base):
+    # ... existing fields
+    openai_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+```
+
+### Schemas
+```python
+class UserSettingsIn(BaseModel):
+    openai_api_key: str | None = None  # Set to empty string to remove
+
+class UserSettingsOut(BaseModel):
+    has_openai_key: bool = False  # Never expose actual key
+```
+
+### API Endpoints
+```
+GET  /users/{user_id}/settings     # Returns UserSettingsOut
+PUT  /users/{user_id}/settings     # Accepts UserSettingsIn
+```
+
+### Security
+- API keys are stored in the database (not exposed via API)
+- `UserSettingsOut` only returns `has_openai_key: bool`
+- Keys are never logged or returned to clients
 
 ## Configuration
 
@@ -442,14 +528,35 @@ All environment variables accessed via `utils/config.py`:
 # utils/config.py
 import os
 
+# Database
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./test.db")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-OPEN_AI_KEY = os.environ.get("OPEN_AI_KEY", "")
+
+# LLM Configuration
+OPEN_AI_KEY = os.environ.get("OPEN_AI_KEY", "")  # Default API key (fallback)
+LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o-mini")
+LLM_EMBEDDING_MODEL = os.environ.get("LLM_EMBEDDING_MODEL", "text-embedding-3-small")
+LLM_BATCH_SIZE = int(os.environ.get("LLM_BATCH_SIZE", "10"))
+LLM_CACHE_TTL = int(os.environ.get("LLM_CACHE_TTL", "604800"))  # 7 days
+
+# Feature Flags
 CREATE_ITEMS_ON_STARTUP = os.environ.get("CREATE_ITEMS_ON_STARTUP", "false").lower() == "true"
+ENABLE_SUMMARIZATION = os.environ.get("ENABLE_SUMMARIZATION", "true").lower() == "true"
 ```
 
-### Feature Flags
-- `CREATE_ITEMS_ON_STARTUP` - Fetch items on app start (dev only)
+### Environment Variables Reference
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | - |
+| `REDIS_URL` | Redis connection (for caching) | `redis://localhost:6379/0` |
+| `OPEN_AI_KEY` | Default OpenAI API key | - |
+| `LLM_MODEL` | Model for completions | `gpt-4o-mini` |
+| `LLM_EMBEDDING_MODEL` | Model for embeddings | `text-embedding-3-small` |
+| `LLM_BATCH_SIZE` | Items per LLM request | `10` |
+| `LLM_CACHE_TTL` | Cache TTL in seconds | `604800` (7 days) |
+| `ENABLE_SUMMARIZATION` | Enable LLM content processing | `true` |
+| `CREATE_ITEMS_ON_STARTUP` | Fetch items on startup | `false` |
 
 ## Testing
 

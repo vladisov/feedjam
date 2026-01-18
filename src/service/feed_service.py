@@ -9,7 +9,7 @@ from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
 from schemas import FeedItemIn, ItemState, UserFeedOut
 from schemas.feeds import UserFeedIn, UserFeedItemIn
-from service.data_extractor import DataExtractor
+from service.content_processor import ContentProcessor
 from service.parser import get_parser_for_source
 from service.ranking_service import RankingService
 from utils import config
@@ -23,14 +23,14 @@ class FeedService:
         feed_storage: FeedStorage,
         subscription_storage: SubscriptionStorage,
         source_storage: SourceStorage,
-        data_extractor: DataExtractor,
+        content_processor: ContentProcessor,
         ranking_service: RankingService,
         like_history_storage: LikeHistoryStorage,
     ) -> None:
         self.feed_storage = feed_storage
         self.subscription_storage = subscription_storage
         self.source_storage = source_storage
-        self.data_extractor = data_extractor
+        self.content_processor = content_processor
         self.ranking_service = ranking_service
         self.like_history_storage = like_history_storage
 
@@ -54,19 +54,12 @@ class FeedService:
 
         items = parser.parse(source)
 
-        # Optionally summarize items
-        for item in items:
+        # Batch process items with LLM (summarize, extract topics, score quality)
+        if config.ENABLE_SUMMARIZATION and items:
             try:
-                if config.ENABLE_SUMMARIZATION and item.article_url:
-                    title, summary = self.data_extractor.extract_and_summarize(
-                        item.title, item.article_url, item.source_name
-                    )
-                    if title:
-                        item.title = title
-                    if summary:
-                        item.summary = summary
+                items = self.content_processor.process_items(items)
             except Exception as e:
-                logger.warning(f"Failed to summarize item '{item.title}': {e}")
+                logger.warning(f"Failed to process items: {e}")
 
         self.feed_storage.save_items(source, items)
         return items

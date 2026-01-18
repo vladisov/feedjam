@@ -5,7 +5,15 @@ from fastapi import APIRouter, Depends
 from api.exceptions import DuplicateEntityException, EntityNotFoundException
 from repository.interest_storage import InterestStorage
 from repository.user_storage import UserStorage
-from schemas import UserIn, UserInterestIn, UserInterestOut, UserInterestsBulkIn, UserOut
+from schemas import (
+    UserIn,
+    UserInterestIn,
+    UserInterestOut,
+    UserInterestsBulkIn,
+    UserOut,
+    UserSettingsIn,
+    UserSettingsOut,
+)
 from utils.dependencies import get_interest_storage, get_user_storage
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -88,3 +96,29 @@ def delete_interest(
         raise EntityNotFoundException("Interest", interest_id)
     interest_storage.delete(interest_id)
     return {"status": "ok"}
+
+
+# --- Settings endpoints ---
+@router.get("/{user_id}/settings", response_model=UserSettingsOut)
+def get_settings(
+    user_id: int,
+    user_storage: UserStorage = Depends(get_user_storage),
+):
+    """Get user settings."""
+    settings = user_storage.get_settings(user_id)
+    if not settings:
+        raise EntityNotFoundException("User", user_id)
+    return settings
+
+
+@router.put("/{user_id}/settings", response_model=UserSettingsOut)
+def update_settings(
+    user_id: int,
+    settings: UserSettingsIn,
+    user_storage: UserStorage = Depends(get_user_storage),
+):
+    """Update user settings (API keys, etc)."""
+    result = user_storage.update_settings(user_id, settings)
+    if not result:
+        raise EntityNotFoundException("User", user_id)
+    return result

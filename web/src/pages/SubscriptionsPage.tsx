@@ -10,7 +10,7 @@ const DEFAULT_USER_ID = 1
 
 export default function SubscriptionsPage() {
   const [newUrl, setNewUrl] = useState('')
-  const { subscriptions, isLoading, error, addSubscription, isAdding } = useSubscriptionsQuery({
+  const { subscriptions, isLoading, error, addSubscription, isAdding, deleteSubscription } = useSubscriptionsQuery({
     userId: DEFAULT_USER_ID,
   })
 
@@ -89,7 +89,12 @@ export default function SubscriptionsPage() {
                   {sub.last_run && ` · Last fetched ${formatDate(sub.last_run)}`}
                 </p>
               </div>
-              <Button variant="ghost" size="sm" className="ml-4 text-muted-foreground hover:text-destructive">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-4 text-muted-foreground hover:text-destructive"
+                onClick={() => deleteSubscription(sub.id)}
+              >
                 <TrashIcon className="h-4 w-4" />
               </Button>
             </div>

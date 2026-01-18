@@ -128,6 +128,8 @@ In Docker, migrations run automatically when the container starts.
 | POST | `/users` | Create a new user |
 | GET | `/users` | List all users |
 | GET | `/users/{id}` | Get user by ID |
+| GET | `/users/{id}/settings` | Get user settings |
+| PUT | `/users/{id}/settings` | Update user settings (API keys) |
 
 ### User Interests (for personalized ranking)
 | Method | Endpoint | Description |
@@ -150,6 +152,7 @@ In Docker, migrations run automatically when the container starts.
 |--------|----------|-------------|
 | POST | `/subscriptions` | Create subscription |
 | GET | `/subscriptions` | List subscriptions |
+| DELETE | `/subscriptions/{id}` | Delete subscription |
 
 ### Runs (Feed fetch history)
 | Method | Endpoint | Description |

@@ -21,29 +21,24 @@ class Base(DeclarativeBase):
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+def _db_session() -> Generator[Session, None, None]:
+    """Core database session logic."""
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
+
+# FastAPI dependency (needs raw generator)
 def get_db() -> Generator[Session, None, None]:
-    """Dependency for FastAPI endpoints."""
-    db = SessionLocal()
-    try:
-        yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
+    """Database session for FastAPI Depends()."""
+    yield from _db_session()
 
 
-@contextmanager
-def get_db_session() -> Generator[Session, None, None]:
-    """Context manager for background tasks."""
-    db = SessionLocal()
-    try:
-        yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
+# Context manager for background tasks
+get_db_session = contextmanager(_db_session)

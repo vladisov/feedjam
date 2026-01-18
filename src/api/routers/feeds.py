@@ -1,5 +1,7 @@
 """Feed API endpoints."""
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends
 
 from api.exceptions import EntityNotFoundException
@@ -18,7 +20,16 @@ def get_feed(
     """Get the active feed for a user."""
     user_feed = feed_service.get_user_feed(user_id)
     if not user_feed:
-        raise EntityNotFoundException("Feed", user_id)
+        # Return empty feed instead of 404
+        now = datetime.now()
+        return UserFeedOut(
+            id=0,
+            user_id=user_id,
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+            user_feed_items=[],
+        )
     return user_feed
 
 

@@ -1,4 +1,4 @@
-import type { UserFeed, Subscription, UserInterest, UserInterestIn } from '@/types/feed'
+import type { UserFeed, Subscription, UserInterest, UserInterestIn, UserSettings, UserSettingsIn } from '@/types/feed'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -16,7 +16,7 @@ export const api = {
     fetch(`${API_URL}/feed/${userId}`).then((res) => handleResponse<UserFeed>(res)),
 
   markRead: (userId: number, itemId: number): Promise<void> =>
-    fetch(`${API_URL}/feed/${userId}/items/${itemId}/read`, {
+    fetch(`${API_URL}/feed/${userId}/mark-read/${itemId}`, {
       method: 'POST',
     }).then((res) => handleResponse<void>(res)),
 
@@ -37,11 +37,16 @@ export const api = {
     ),
 
   addSubscription: (resourceUrl: string, userId: number): Promise<Subscription> =>
-    fetch(`${API_URL}/subscribe`, {
+    fetch(`${API_URL}/subscriptions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ resource_url: resourceUrl, user_id: userId }),
     }).then((res) => handleResponse<Subscription>(res)),
+
+  deleteSubscription: (subscriptionId: number): Promise<void> =>
+    fetch(`${API_URL}/subscriptions/${subscriptionId}`, {
+      method: 'DELETE',
+    }).then((res) => handleResponse<void>(res)),
 
   // Interests
   getInterests: (userId: number): Promise<UserInterest[]> =>
@@ -67,4 +72,17 @@ export const api = {
     fetch(`${API_URL}/users/${userId}/interests/${interestId}`, {
       method: 'DELETE',
     }).then((res) => handleResponse<void>(res)),
+
+  // Settings
+  getSettings: (userId: number): Promise<UserSettings> =>
+    fetch(`${API_URL}/users/${userId}/settings`).then((res) =>
+      handleResponse<UserSettings>(res)
+    ),
+
+  updateSettings: (userId: number, settings: UserSettingsIn): Promise<UserSettings> =>
+    fetch(`${API_URL}/users/${userId}/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    }).then((res) => handleResponse<UserSettings>(res)),
 }

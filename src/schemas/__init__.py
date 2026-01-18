@@ -18,12 +18,14 @@ from .interests import UserInterestIn, UserInterestOut, UserInterestsBulkIn
 from .runs import RunIn, RunOut
 from .sources import SourceIn, SourceOut
 from .subscriptions import SubscriptionIn, SubscriptionOut, SubscriptionUpdate
-from .users import UserIn, UserOut
+from .users import UserIn, UserOut, UserSettingsIn, UserSettingsOut
 
 __all__ = [
     # Users
     "UserIn",
     "UserOut",
+    "UserSettingsIn",
+    "UserSettingsOut",
     # Sources
     "SourceIn",
     "SourceOut",

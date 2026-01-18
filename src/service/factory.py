@@ -7,7 +7,7 @@ For FastAPI endpoints, use the dependencies in utils/dependencies.py instead,
 which uses FastAPI's native DI system.
 
 Usage:
-    with get_db_session() as db:
+    with get_db() as db:
         factory = ServiceFactory(db)
         factory.feed_service.generate_user_feed(user_id)
 """
@@ -23,8 +23,9 @@ from repository.run_storage import RunStorage
 from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
 from repository.user_storage import UserStorage
-from service.data_extractor import DataExtractor
+from service.content_processor import ContentProcessor
 from service.feed_service import FeedService
+from service.llm import LLMCache, LLMConfig, LLMService, OpenAIProvider
 from service.ranking_service import RankingService
 from service.subscription_service import SubscriptionService
 from utils import config
@@ -34,7 +35,7 @@ class ServiceFactory:
     """Factory for creating services with all dependencies wired up.
 
     Usage:
-        with get_db_session() as db:
+        with get_db() as db:
             factory = ServiceFactory(db)
             factory.feed_service.generate_user_feed(user_id)
     """
@@ -76,8 +77,30 @@ class ServiceFactory:
     # --- Services (cached) ---
 
     @cached_property
-    def data_extractor(self) -> DataExtractor:
-        return DataExtractor(self._openai_key)
+    def llm_service(self) -> LLMService:
+        """Unified LLM service for all AI operations."""
+        provider = OpenAIProvider(
+            api_key=self._openai_key,
+            model=config.LLM_MODEL,
+            embedding_model=config.LLM_EMBEDDING_MODEL,
+        )
+        cache = LLMCache(
+            redis_url=config.REDIS_URL,
+            enabled=bool(config.REDIS_URL),
+        )
+        llm_config = LLMConfig(
+            model=config.LLM_MODEL,
+            embedding_model=config.LLM_EMBEDDING_MODEL,
+            batch_size=config.LLM_BATCH_SIZE,
+            cache_ttl_summary=config.LLM_CACHE_TTL,
+            enabled=bool(self._openai_key),
+        )
+        return LLMService(provider, cache, llm_config)
+
+    @cached_property
+    def content_processor(self) -> ContentProcessor:
+        """Content processor using unified LLM service."""
+        return ContentProcessor(self.llm_service)
 
     @cached_property
     def ranking_service(self) -> RankingService:
@@ -92,7 +115,7 @@ class ServiceFactory:
             self.feed_storage,
             self.subscription_storage,
             self.source_storage,
-            self.data_extractor,
+            self.content_processor,
             self.ranking_service,
             self.like_history_storage,
         )

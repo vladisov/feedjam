@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from repository.db import get_db_session
+from repository.db import get_db
 from schemas import RunIn, SourceIn, SubscriptionUpdate, UserIn
 from service.factory import ServiceFactory
 from utils.logger import get_logger
@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 def on_startup(app):
     """Initialize default data on startup."""
-    with get_db_session() as db:
+    with get_db() as db:
         _run_startup(db)
 
 
