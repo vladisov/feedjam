@@ -1,7 +1,6 @@
 # Multi-stage build for smaller production images
 FROM python:3.12-slim AS base
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -21,17 +20,16 @@ RUN pip install poetry
 # Copy dependency files
 COPY pyproject.toml poetry.lock* ./
 
-# Install dependencies (no dev dependencies in production)
+# Install dependencies
 RUN poetry config virtualenvs.create false \
     && poetry install --no-interaction --no-ansi --only main
 
 # Copy application code
 COPY src/ ./src/
-COPY scripts/ ./scripts/
+COPY alembic/ ./alembic/
 COPY alembic.ini ./
 
-# Set Python path
 ENV PYTHONPATH=/app/src
 
-# Default command
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run migrations, then start app
+CMD alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8000

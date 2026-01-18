@@ -9,7 +9,7 @@ from utils.dependencies import get_subscription_service
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 
-@router.post("/", response_model=SubscriptionOut)
+@router.post("", response_model=SubscriptionOut)
 def create_subscription(
     subscription: SubscriptionIn,
     subscription_service: SubscriptionService = Depends(get_subscription_service),
@@ -18,7 +18,7 @@ def create_subscription(
     return subscription_service.create(subscription)
 
 
-@router.get("/", response_model=list[SubscriptionOut])
+@router.get("", response_model=list[SubscriptionOut])
 def list_subscriptions(
     user_id: int,
     subscription_service: SubscriptionService = Depends(get_subscription_service),

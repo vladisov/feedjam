@@ -4,9 +4,11 @@ import type { FeedItem } from '@/types/feed'
 interface FeedListProps {
   items: FeedItem[]
   onToggleStar?: (item: FeedItem) => void
+  onToggleLike?: (item: FeedItem) => void
+  onToggleDislike?: (item: FeedItem) => void
 }
 
-export function FeedList({ items, onToggleStar }: FeedListProps) {
+export function FeedList({ items, onToggleStar, onToggleLike, onToggleDislike }: FeedListProps) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -21,7 +23,13 @@ export function FeedList({ items, onToggleStar }: FeedListProps) {
   return (
     <div className="space-y-3">
       {items.map((item) => (
-        <FeedCard key={item.id} item={item} onToggleStar={onToggleStar} />
+        <FeedCard
+          key={item.id}
+          item={item}
+          onToggleStar={onToggleStar}
+          onToggleLike={onToggleLike}
+          onToggleDislike={onToggleDislike}
+        />
       ))}
     </div>
   )

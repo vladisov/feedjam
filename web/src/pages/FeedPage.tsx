@@ -1,16 +1,42 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { FeedList } from '@/components/feed/FeedList'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
 import { ArrowPathIcon } from '@heroicons/react/24/outline'
+import { api } from '@/lib/api'
+import type { FeedItem } from '@/types/feed'
 
 // TODO: Make this configurable or remove when multi-user
 const DEFAULT_USER_ID = 1
 
 export default function FeedPage() {
+  const queryClient = useQueryClient()
   const { items, isLoading, error, refetch } = useFeedQuery({
     userId: DEFAULT_USER_ID,
   })
+
+  const likeMutation = useMutation({
+    mutationFn: (item: FeedItem) => api.toggleLike(DEFAULT_USER_ID, item.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed', DEFAULT_USER_ID] })
+    },
+  })
+
+  const dislikeMutation = useMutation({
+    mutationFn: (item: FeedItem) => api.toggleDislike(DEFAULT_USER_ID, item.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed', DEFAULT_USER_ID] })
+    },
+  })
+
+  const handleToggleLike = (item: FeedItem) => {
+    likeMutation.mutate(item)
+  }
+
+  const handleToggleDislike = (item: FeedItem) => {
+    dislikeMutation.mutate(item)
+  }
 
   if (isLoading && items.length === 0) {
     return <PageLoader />
@@ -50,7 +76,11 @@ export default function FeedPage() {
       </div>
 
       {/* Feed list */}
-      <FeedList items={items} />
+      <FeedList
+        items={items}
+        onToggleLike={handleToggleLike}
+        onToggleDislike={handleToggleDislike}
+      />
     </div>
   )
 }

@@ -4,12 +4,14 @@ import logging
 
 from api.exceptions import EntityNotFoundException, ParserNotFoundException
 from repository.feed_storage import FeedStorage
+from repository.like_history_storage import LikeHistoryStorage
 from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
 from schemas import FeedItemIn, ItemState, UserFeedOut
 from schemas.feeds import UserFeedIn, UserFeedItemIn
 from service.data_extractor import DataExtractor
-from service.parser.source_parser_strategy import get_parser
+from service.parser import get_parser_for_source
+from service.ranking_service import RankingService
 from utils import config
 
 logger = logging.getLogger(__name__)
@@ -22,11 +24,15 @@ class FeedService:
         subscription_storage: SubscriptionStorage,
         source_storage: SourceStorage,
         data_extractor: DataExtractor,
+        ranking_service: RankingService,
+        like_history_storage: LikeHistoryStorage,
     ) -> None:
         self.feed_storage = feed_storage
         self.subscription_storage = subscription_storage
         self.source_storage = source_storage
         self.data_extractor = data_extractor
+        self.ranking_service = ranking_service
+        self.like_history_storage = like_history_storage
 
     def mark_read(self, user_id: int, item_id: int) -> bool:
         """Mark a feed item as read."""
@@ -42,11 +48,11 @@ class FeedService:
         if not source:
             raise EntityNotFoundException("Source", subscription.source_id)
 
-        parser = get_parser(source)
+        parser = get_parser_for_source(source)
         if not parser:
-            raise ParserNotFoundException(source.name or "unknown")
+            raise ParserNotFoundException(source.source_type or "unknown")
 
-        items = parser(source)
+        items = parser.parse(source)
 
         # Optionally summarize items
         for item in items:
@@ -83,6 +89,9 @@ class FeedService:
         # Add new items
         items += self._get_new_items(user_id, items)
 
+        # Apply personalized ranking
+        items = self.ranking_service.compute_rank_scores(user_id, items)
+
         new_feed = UserFeedIn(
             user_id=user_id,
             is_active=True,
@@ -93,6 +102,36 @@ class FeedService:
 
         if active_feed:
             self.feed_storage.deactivate_user_feed(active_feed.id)
+
+    def toggle_like(self, user_id: int, item_id: int) -> dict:
+        """Toggle like for a feed item and update like history."""
+        success, source_name, is_liked = self.feed_storage.toggle_like(user_id, item_id)
+        if not success:
+            raise EntityNotFoundException("FeedItem", item_id)
+
+        # Update like history if we have a source name
+        if source_name:
+            if is_liked:
+                self.like_history_storage.increment_like(user_id, source_name)
+            else:
+                self.like_history_storage.decrement_like(user_id, source_name)
+
+        return {"liked": is_liked}
+
+    def toggle_dislike(self, user_id: int, item_id: int) -> dict:
+        """Toggle dislike for a feed item and update like history."""
+        success, source_name, is_disliked = self.feed_storage.toggle_dislike(user_id, item_id)
+        if not success:
+            raise EntityNotFoundException("FeedItem", item_id)
+
+        # Update like history if we have a source name
+        if source_name:
+            if is_disliked:
+                self.like_history_storage.increment_dislike(user_id, source_name)
+            else:
+                self.like_history_storage.decrement_dislike(user_id, source_name)
+
+        return {"disliked": is_disliked}
 
     def _get_unread_items(self, active_feed: UserFeedOut | None) -> list[UserFeedItemIn]:
         """Get unread items from the active feed."""

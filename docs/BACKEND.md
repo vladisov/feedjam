@@ -11,18 +11,27 @@
 
 ## Project Structure
 ```
-src/
-├── api/
-│   ├── routers/        # Domain routers (users.py, feeds.py, etc.)
-│   ├── exceptions.py   # Custom domain exceptions
-│   └── schemas.py      # API-level schemas (ErrorResponse)
-├── model/              # SQLAlchemy ORM models
-├── repository/         # Data access layer (one per model)
-├── schemas/            # Pydantic schemas with In/Out naming
-├── service/            # Business logic layer
-├── tasks/              # APScheduler background tasks
-├── utils/              # Config, logging, dependencies
-└── main.py             # FastAPI app entry
+feedjam/
+├── alembic/                # Database migrations (standard location)
+│   └── versions/
+├── alembic.ini
+├── src/
+│   ├── api/
+│   │   ├── routers/        # Domain routers (users.py, feeds.py, etc.)
+│   │   ├── exceptions.py   # Custom domain exceptions
+│   │   └── schemas.py      # API-level schemas (ErrorResponse)
+│   ├── model/              # SQLAlchemy ORM models
+│   ├── repository/         # Data access layer (one per model)
+│   ├── schemas/            # Pydantic schemas with In/Out naming
+│   ├── service/            # Business logic layer
+│   │   ├── parser/         # Source-specific parsers
+│   │   └── factory.py      # ServiceFactory for background tasks
+│   ├── tasks/              # APScheduler background tasks
+│   ├── utils/
+│   │   ├── config.py       # Environment configuration
+│   │   ├── dependencies.py # FastAPI dependency injection
+│   │   └── logger.py       # Centralized logging
+│   └── main.py             # FastAPI app entry
 ```
 
 ## Schema Naming Convention
@@ -47,28 +56,87 @@ class UserOut(BaseModel):
 ## Custom Exceptions
 Use domain exceptions instead of HTTPException in services:
 - `EntityNotFoundException(entity, identifier)` → 404
-- `DuplicateEntityException(entity, field, value)` → 409
+- `DuplicateEntityException(entity, field, value)` → 400
+- `ValidationException(message)` → 400
 - `ParserNotFoundException(source_type)` → 400
 
-Exception handlers in main.py convert these to proper HTTP responses.
+Exception handlers in main.py convert these to proper HTTP responses using a unified handler:
 
 ```python
-# In service layer - raise domain exceptions
-def get_user(self, user_id: int) -> UserOut:
-    user = self.user_storage.get(user_id)
-    if not user:
-        raise EntityNotFoundException("User", user_id)
-    return user
+# main.py - Single handler for all FeedJam exceptions
+EXCEPTION_STATUS_CODES: dict[type[FeedJamException], int] = {
+    EntityNotFoundException: 404,
+    DuplicateEntityException: 400,
+    ValidationException: 400,
+    ParserNotFoundException: 400,
+}
 
-# In main.py - handle exceptions
-@app.exception_handler(EntityNotFoundException)
-async def entity_not_found_handler(request: Request, exc: EntityNotFoundException):
-    return JSONResponse(status_code=404, content={"message": exc.message, "details": exc.details})
+@app.exception_handler(FeedJamException)
+async def feedjam_exception_handler(request: Request, exc: FeedJamException) -> JSONResponse:
+    status_code = EXCEPTION_STATUS_CODES.get(type(exc), 500)
+    return JSONResponse(
+        status_code=status_code,
+        content=ErrorResponse(message=exc.message, details=exc.details).model_dump(),
+    )
+```
+
+## Dependency Injection
+
+`ServiceFactory` is the single source of truth for wiring dependencies.
+
+### ServiceFactory
+
+```python
+# service/factory.py
+class ServiceFactory:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    @cached_property
+    def user_storage(self) -> UserStorage:
+        return UserStorage(self.db)
+
+    @cached_property
+    def feed_service(self) -> FeedService:
+        return FeedService(self.feed_storage, ...)
+```
+
+### FastAPI Endpoints
+
+`dependencies.py` wraps ServiceFactory for FastAPI:
+
+```python
+# utils/dependencies.py
+def get_factory(db: Session = Depends(get_db)) -> ServiceFactory:
+    return ServiceFactory(db)
+
+def get_feed_service(factory: ServiceFactory = Depends(get_factory)):
+    return factory.feed_service
+```
+
+Usage in routers:
+```python
+@router.get("/{user_id}")
+def get_feed(user_id: int, feed_service: FeedService = Depends(get_feed_service)):
+    return feed_service.get_user_feed(user_id)
+```
+
+### Background Tasks
+
+Use ServiceFactory directly:
+```python
+from repository.db import get_db_session
+from service.factory import ServiceFactory
+
+def scheduled_feed_fetch():
+    with get_db_session() as db:
+        factory = ServiceFactory(db)
+        factory.feed_service.fetch_all_feeds()
 ```
 
 ## Database Session Management
 
-Two distinct patterns for database sessions:
+Two patterns for database sessions:
 
 ### FastAPI Endpoints (Dependency Injection)
 Use `get_db()` generator - automatic transaction handling:
@@ -88,9 +156,8 @@ from repository.db import get_db_session
 
 def scheduled_task():
     with get_db_session() as db:
-        # Create fresh repositories/services per task
-        user_storage = UserStorage(db)
-        # Must explicitly manage transactions if needed
+        factory = ServiceFactory(db)
+        factory.feed_service.do_something()
 ```
 
 ## Repository Pattern
@@ -134,31 +201,20 @@ class UserStorage:
 class FeedService:
     def __init__(
         self,
-        subscription_storage: SubscriptionStorage,
         feed_storage: FeedStorage,
+        subscription_storage: SubscriptionStorage,
         source_storage: SourceStorage,
         data_extractor: DataExtractor,
+        ranking_service: RankingService,
+        like_history_storage: LikeHistoryStorage,
     ):
-        self.subscription_storage = subscription_storage
         self.feed_storage = feed_storage
-        self.source_storage = source_storage
-        self.data_extractor = data_extractor
+        self.subscription_storage = subscription_storage
+        # ... etc
 
     def get_feed(self, user_id: int) -> UserFeedOut:
         # Business logic here
         ...
-```
-
-### Dependency Injection
-Services are instantiated in `utils/dependencies.py`:
-```python
-def get_feed_service(db: Session = Depends(get_db)) -> FeedService:
-    return FeedService(
-        subscription_storage=SubscriptionStorage(db),
-        feed_storage=FeedStorage(db),
-        source_storage=SourceStorage(db),
-        data_extractor=DataExtractor(api_key=OPEN_AI_KEY),
-    )
 ```
 
 ## Router Pattern
@@ -171,7 +227,7 @@ def get_feed_service(db: Session = Depends(get_db)) -> FeedService:
 # api/routers/users.py
 router = APIRouter(prefix="/users", tags=["users"])
 
-@router.post("/", response_model=UserOut, status_code=201)
+@router.post("", response_model=UserOut)
 def create_user(user: UserIn, user_storage: UserStorage = Depends(get_user_storage)):
     existing = user_storage.get_by_handle(user.handle)
     if existing:
@@ -200,16 +256,15 @@ logger.error("Failed to fetch feed", exc_info=True)
 ```python
 # tasks/scheduler.py
 from apscheduler.triggers.interval import IntervalTrigger
+from repository.db import get_db_session
+from service.factory import ServiceFactory
 
 def fetch_feeds_job():
-    """Each task creates fresh session and services."""
+    """Each task creates fresh session via ServiceFactory."""
     with get_db_session() as db:
-        feed_service = FeedService(
-            subscription_storage=SubscriptionStorage(db),
-            # ... other dependencies
-        )
+        factory = ServiceFactory(db)
         try:
-            feed_service.fetch_all_feeds()
+            factory.feed_service.fetch_all_feeds()
         except Exception as e:
             logger.error(f"Feed fetch failed: {e}", exc_info=True)
 
@@ -224,34 +279,134 @@ scheduler.add_job(
 
 ### Best Practices
 - Create fresh db session per task invocation
+- Use ServiceFactory for dependency management
 - Wrap task body in try/except with logging
 - Use `replace_existing=True` to avoid duplicate jobs
 
-## Parser Strategy Pattern
+## Parser System (Extensible)
 
-Parsers extract feed items from different source types:
+FeedJam uses a registry pattern for parsers, making it easy to add new source types.
 
+### Available Parsers
+- `rss` - Generic RSS/Atom feeds (default fallback)
+- `hackernews` - Hacker News RSS feeds
+- `telegram` - Telegram public channels
+- `reddit` - Reddit subreddits and user feeds
+- `youtube` - YouTube channel and playlist feeds
+- `github` - GitHub releases, commits, and activity feeds
+
+### Source Types
+Defined in `model/source.py`:
 ```python
-# service/parser/source_parser_strategy.py
-ParserFunc = Callable[[Source], list[FeedItemIn]]
-
-PARSERS: dict[str, ParserFunc] = {
-    "rss": parse_rss_feed,
-    "telegram": parse_telegram_channel,
-    "hackernews": parse_hackernews,
-}
-
-def get_parser(source: Source) -> ParserFunc:
-    parser = PARSERS.get(source.source_type)
-    if not parser:
-        raise ParserNotFoundException(source.source_type)
-    return parser
+class SourceType(str, Enum):
+    RSS = "rss"
+    HACKERNEWS = "hackernews"
+    TELEGRAM = "telegram"
+    REDDIT = "reddit"
+    YOUTUBE = "youtube"
+    GITHUB = "github"
 ```
 
 ### Adding a New Parser
-1. Create parser function in `service/parser/`
-2. Return `list[FeedItemIn]` (input schemas, not ORM)
-3. Register in `PARSERS` dict
+
+**Step 1: Create the parser file** (`service/parser/myparser.py`):
+```python
+from service.parser.base import BaseParser, register_parser
+from model.source import Source
+from schemas import FeedItemIn
+
+@register_parser("mytype")
+class MyParser(BaseParser):
+    """Parser for my feed type."""
+
+    @classmethod
+    def can_handle(cls, url: str) -> bool:
+        """Auto-detect if URL is this feed type."""
+        return "mysite.com" in url
+
+    def parse(self, source: Source) -> list[FeedItemIn]:
+        """Parse feed and return items."""
+        items = []
+        # ... fetch and parse ...
+        return items
+
+    def get_source_name(self, url: str) -> str:
+        """Generate human-readable name from URL."""
+        return "my-source-name"
+```
+
+**Step 2: Add the source type** (`model/source.py`):
+```python
+class SourceType(str, Enum):
+    # ... existing types ...
+    MYTYPE = "mytype"  # Add new type
+```
+
+**Step 3: Import the parser** (auto-registration):
+Add import in `service/parser/__init__.py`:
+```python
+from service.parser import myparser  # noqa: F401
+```
+
+That's it! The parser is automatically registered and will:
+- Be used when `source.source_type == "mytype"`
+- Auto-detect matching URLs when subscribing
+- Generate proper source names
+
+### Parser Interface
+
+```python
+class BaseParser(ABC):
+    @classmethod
+    @abstractmethod
+    def can_handle(cls, url: str) -> bool:
+        """Return True if this parser can handle the URL."""
+        ...
+
+    @abstractmethod
+    def parse(self, source: Source) -> list[FeedItemIn]:
+        """Parse the source and return feed items."""
+        ...
+
+    def get_source_name(self, url: str) -> str:
+        """Optional: Generate name from URL."""
+        ...
+```
+
+### Using Parsers
+
+```python
+from service.parser import get_parser_for_source, detect_source_type
+
+# Get parser for a source
+parser = get_parser_for_source(source)
+items = parser.parse(source)
+
+# Auto-detect source type from URL
+source_type = detect_source_type(url)  # Returns "reddit", "rss", etc.
+
+# List registered parsers
+from service.parser import get_registered_parsers
+print(get_registered_parsers())
+```
+
+## Database Migrations (Alembic)
+
+Alembic is at project root (standard location). Migrations run automatically on container startup.
+
+```bash
+# Run migrations locally
+poetry run alembic upgrade head
+
+# Create new migration
+poetry run alembic revision --autogenerate -m "Add new table"
+
+# Rollback
+poetry run alembic downgrade -1
+
+# Show current state
+poetry run alembic current
+```
 
 ## External Service Integration
 
@@ -291,12 +446,10 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./test.db")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 OPEN_AI_KEY = os.environ.get("OPEN_AI_KEY", "")
 CREATE_ITEMS_ON_STARTUP = os.environ.get("CREATE_ITEMS_ON_STARTUP", "false").lower() == "true"
-ENABLE_SUMMARIZATION = os.environ.get("ENABLE_SUMMARIZATION", "true").lower() == "true"
 ```
 
 ### Feature Flags
 - `CREATE_ITEMS_ON_STARTUP` - Fetch items on app start (dev only)
-- `ENABLE_SUMMARIZATION` - Enable AI summarization
 
 ## Testing
 
@@ -305,12 +458,30 @@ ENABLE_SUMMARIZATION = os.environ.get("ENABLE_SUMMARIZATION", "true").lower() ==
 class TestUserAPI(BaseTestCase):
     def test_create_user(self):
         response = self.client.post("/users/", json={"handle": "testuser"})
-        assert response.status_code == 201
+        assert response.status_code == 200
         assert response.json()["handle"] == "testuser"
 
     def test_get_user_not_found(self):
         response = self.client.get("/users/999")
         assert response.status_code == 404
+```
+
+### Using ServiceFactory in Tests
+```python
+class TestFeedService(BaseTestCase):
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        Base.metadata.create_all(bind=engine)
+        self.db = next(override_get_db())
+        self.factory = ServiceFactory(self.db, openai_key="")
+
+        # Convenience aliases
+        self.feed_service = self.factory.feed_service
+        self.user_storage = self.factory.user_storage
+
+        yield
+        self.db.close()
+        Base.metadata.drop_all(bind=engine)
 ```
 
 ### Factory Methods
@@ -324,8 +495,14 @@ user = self.create_user(handle="testuser")
 user = self.create_user_direct(handle="testuser")
 ```
 
-### Assertion Helpers
-```python
-self.assert_status(response, 201)
-self.assert_error(response, 404, "User not found")
+### Running Tests
+```bash
+# All tests
+poetry run pytest
+
+# Specific file
+poetry run pytest src/__tests__/ranking_test.py -v
+
+# With coverage
+poetry run pytest --cov=src
 ```

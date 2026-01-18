@@ -1,10 +1,11 @@
 """Subscription service - handles subscription management."""
 
+from model.source import SourceType
 from repository.feed_storage import FeedStorage
 from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
 from schemas import SourceIn, SubscriptionIn, SubscriptionOut
-from service.parser.source_parser_strategy import parse_name
+from service.parser import detect_source_type, parse_source_name
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -23,10 +24,19 @@ class SubscriptionService:
 
     def create(self, subscription: SubscriptionIn) -> SubscriptionOut:
         """Create a new subscription."""
+        # Auto-detect source type from URL
+        source_type = detect_source_type(subscription.resource_url) or SourceType.RSS.value
+
+        # Generate source name
+        source_name = parse_source_name(subscription.resource_url, source_type)
+
         # Get or create source
-        source_name = parse_name(subscription.resource_url)
         source = self.source_storage.create(
-            SourceIn(name=source_name, resource_url=subscription.resource_url)
+            SourceIn(
+                name=source_name,
+                resource_url=subscription.resource_url,
+                source_type=source_type,
+            )
         )
 
         # Create subscription

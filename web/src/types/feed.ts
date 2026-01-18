@@ -9,6 +9,7 @@ export interface FeedItem {
   comments_url: string | null
   points: number | null
   views: number | null
+  rank_score: number
   state: FeedItemState
   created_at: string
   updated_at: string
@@ -41,5 +42,19 @@ export interface Subscription {
   is_active: boolean
   created_at: string
   last_run: string | null
+}
+
+export interface UserInterest {
+  id: number
+  user_id: number
+  topic: string
+  weight: number
+  created_at: string
+  updated_at: string
+}
+
+export interface UserInterestIn {
+  topic: string
+  weight: number
 }
 

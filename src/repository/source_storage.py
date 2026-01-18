@@ -33,7 +33,11 @@ class SourceStorage:
         if existing:
             return existing
 
-        db_source = Source(name=source.name, resource_url=source.resource_url)
+        db_source = Source(
+            name=source.name,
+            resource_url=source.resource_url,
+            source_type=source.source_type,
+        )
         self.db.add(db_source)
         self.db.commit()
         self.db.refresh(db_source)

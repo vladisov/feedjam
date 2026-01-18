@@ -9,7 +9,7 @@ from utils.dependencies import get_run_storage
 router = APIRouter(prefix="/runs", tags=["runs"])
 
 
-@router.get("/", response_model=list[RunOut])
+@router.get("", response_model=list[RunOut])
 def list_runs(run_storage: RunStorage = Depends(get_run_storage)):
     """Get all runs (latest 100)."""
     return run_storage.get_all()
@@ -24,7 +24,7 @@ def get_runs_by_subscription(
     return run_storage.get_by_subscription(subscription_id)
 
 
-@router.post("/", response_model=RunOut)
+@router.post("", response_model=RunOut)
 def create_run(
     run: RunIn,
     run_storage: RunStorage = Depends(get_run_storage),

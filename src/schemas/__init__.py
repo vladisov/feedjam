@@ -14,6 +14,7 @@ from .feeds import (
     UserFeedItemOut,
     UserFeedOut,
 )
+from .interests import UserInterestIn, UserInterestOut, UserInterestsBulkIn
 from .runs import RunIn, RunOut
 from .sources import SourceIn, SourceOut
 from .subscriptions import SubscriptionIn, SubscriptionOut, SubscriptionUpdate
@@ -37,6 +38,10 @@ __all__ = [
     "UserFeedItemOut",
     "UserFeedOut",
     "ItemState",
+    # Interests
+    "UserInterestIn",
+    "UserInterestOut",
+    "UserInterestsBulkIn",
     # Runs
     "RunIn",
     "RunOut",

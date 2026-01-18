@@ -3,14 +3,15 @@
 from fastapi import APIRouter, Depends
 
 from api.exceptions import DuplicateEntityException, EntityNotFoundException
+from repository.interest_storage import InterestStorage
 from repository.user_storage import UserStorage
-from schemas import UserIn, UserOut
-from utils.dependencies import get_user_storage
+from schemas import UserIn, UserInterestIn, UserInterestOut, UserInterestsBulkIn, UserOut
+from utils.dependencies import get_interest_storage, get_user_storage
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/", response_model=UserOut)
+@router.post("", response_model=UserOut)
 def create_user(
     user: UserIn,
     user_storage: UserStorage = Depends(get_user_storage),
@@ -22,7 +23,7 @@ def create_user(
     return user_storage.create(user)
 
 
-@router.get("/", response_model=list[UserOut])
+@router.get("", response_model=list[UserOut])
 def list_users(
     skip: int = 0,
     limit: int = 100,
@@ -42,3 +43,48 @@ def get_user(
     if not user:
         raise EntityNotFoundException("User", user_id)
     return user
+
+
+# --- Interest endpoints ---
+@router.get("/{user_id}/interests", response_model=list[UserInterestOut])
+def list_interests(
+    user_id: int,
+    interest_storage: InterestStorage = Depends(get_interest_storage),
+):
+    """List all interests for a user."""
+    return interest_storage.get_by_user(user_id)
+
+
+@router.put("/{user_id}/interests", response_model=list[UserInterestOut])
+def replace_interests(
+    user_id: int,
+    data: UserInterestsBulkIn,
+    interest_storage: InterestStorage = Depends(get_interest_storage),
+):
+    """Replace all interests for a user (bulk update from UI)."""
+    return interest_storage.replace_all(user_id, data.interests)
+
+
+@router.post("/{user_id}/interests", response_model=UserInterestOut)
+def add_interest(
+    user_id: int,
+    interest: UserInterestIn,
+    interest_storage: InterestStorage = Depends(get_interest_storage),
+):
+    """Add a single interest for a user."""
+    return interest_storage.create(user_id, interest)
+
+
+@router.delete("/{user_id}/interests/{interest_id}")
+def delete_interest(
+    user_id: int,
+    interest_id: int,
+    interest_storage: InterestStorage = Depends(get_interest_storage),
+):
+    """Delete a specific interest."""
+    # Verify the interest belongs to this user
+    interest = interest_storage.get(interest_id)
+    if not interest or interest.user_id != user_id:
+        raise EntityNotFoundException("Interest", interest_id)
+    interest_storage.delete(interest_id)
+    return {"status": "ok"}

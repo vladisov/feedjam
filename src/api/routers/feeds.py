@@ -33,3 +33,23 @@ def mark_item_read(
     if not success:
         raise EntityNotFoundException("FeedItem", item_id)
     return {"status": "ok"}
+
+
+@router.post("/{user_id}/items/{item_id}/like")
+def toggle_like(
+    user_id: int,
+    item_id: int,
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    """Toggle like for a feed item."""
+    return feed_service.toggle_like(user_id, item_id)
+
+
+@router.post("/{user_id}/items/{item_id}/dislike")
+def toggle_dislike(
+    user_id: int,
+    item_id: int,
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    """Toggle dislike for a feed item."""
+    return feed_service.toggle_dislike(user_id, item_id)

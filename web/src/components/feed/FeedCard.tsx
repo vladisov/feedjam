@@ -3,19 +3,29 @@ import {
   ArrowTopRightOnSquareIcon,
   StarIcon,
   EyeIcon,
+  HandThumbUpIcon,
+  HandThumbDownIcon,
 } from '@heroicons/react/24/outline'
-import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
+import {
+  StarIcon as StarIconSolid,
+  HandThumbUpIcon as HandThumbUpIconSolid,
+  HandThumbDownIcon as HandThumbDownIconSolid,
+} from '@heroicons/react/24/solid'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
 import type { FeedItem } from '@/types/feed'
 
 interface FeedCardProps {
   item: FeedItem
   onToggleStar?: (item: FeedItem) => void
+  onToggleLike?: (item: FeedItem) => void
+  onToggleDislike?: (item: FeedItem) => void
 }
 
-export function FeedCard({ item, onToggleStar }: FeedCardProps) {
+export function FeedCard({ item, onToggleStar, onToggleLike, onToggleDislike }: FeedCardProps) {
   const isRead = item.state.read
   const isStarred = item.state.star
+  const isLiked = item.state.like
+  const isDisliked = item.state.dislike
 
   return (
     <article
@@ -49,16 +59,48 @@ export function FeedCard({ item, onToggleStar }: FeedCardProps) {
           </p>
         </div>
 
-        <button
-          onClick={() => onToggleStar?.(item)}
-          className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-feed-starred"
-        >
-          {isStarred ? (
-            <StarIconSolid className="h-5 w-5 text-feed-starred" />
-          ) : (
-            <StarIcon className="h-5 w-5" />
-          )}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onToggleLike?.(item)}
+            className={cn(
+              'flex-shrink-0 rounded p-1 transition-colors hover:bg-secondary',
+              isLiked ? 'text-green-500' : 'text-muted-foreground hover:text-green-500'
+            )}
+            title="Like - stories from this source will rank higher"
+          >
+            {isLiked ? (
+              <HandThumbUpIconSolid className="h-5 w-5" />
+            ) : (
+              <HandThumbUpIcon className="h-5 w-5" />
+            )}
+          </button>
+
+          <button
+            onClick={() => onToggleDislike?.(item)}
+            className={cn(
+              'flex-shrink-0 rounded p-1 transition-colors hover:bg-secondary',
+              isDisliked ? 'text-red-500' : 'text-muted-foreground hover:text-red-500'
+            )}
+            title="Dislike - stories from this source will rank lower"
+          >
+            {isDisliked ? (
+              <HandThumbDownIconSolid className="h-5 w-5" />
+            ) : (
+              <HandThumbDownIcon className="h-5 w-5" />
+            )}
+          </button>
+
+          <button
+            onClick={() => onToggleStar?.(item)}
+            className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-feed-starred"
+          >
+            {isStarred ? (
+              <StarIconSolid className="h-5 w-5 text-feed-starred" />
+            ) : (
+              <StarIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Summary */}

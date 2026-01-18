@@ -1,4 +1,4 @@
-import type { UserFeed, Subscription } from '@/types/feed'
+import type { UserFeed, Subscription, UserInterest, UserInterestIn } from '@/types/feed'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -20,6 +20,16 @@ export const api = {
       method: 'POST',
     }).then((res) => handleResponse<void>(res)),
 
+  toggleLike: (userId: number, itemId: number): Promise<{ liked: boolean }> =>
+    fetch(`${API_URL}/feed/${userId}/items/${itemId}/like`, {
+      method: 'POST',
+    }).then((res) => handleResponse<{ liked: boolean }>(res)),
+
+  toggleDislike: (userId: number, itemId: number): Promise<{ disliked: boolean }> =>
+    fetch(`${API_URL}/feed/${userId}/items/${itemId}/dislike`, {
+      method: 'POST',
+    }).then((res) => handleResponse<{ disliked: boolean }>(res)),
+
   // Subscriptions
   getSubscriptions: (userId: number): Promise<Subscription[]> =>
     fetch(`${API_URL}/subscriptions?user_id=${userId}`).then((res) =>
@@ -32,4 +42,29 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ resource_url: resourceUrl, user_id: userId }),
     }).then((res) => handleResponse<Subscription>(res)),
+
+  // Interests
+  getInterests: (userId: number): Promise<UserInterest[]> =>
+    fetch(`${API_URL}/users/${userId}/interests`).then((res) =>
+      handleResponse<UserInterest[]>(res)
+    ),
+
+  replaceInterests: (userId: number, interests: UserInterestIn[]): Promise<UserInterest[]> =>
+    fetch(`${API_URL}/users/${userId}/interests`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ interests }),
+    }).then((res) => handleResponse<UserInterest[]>(res)),
+
+  addInterest: (userId: number, interest: UserInterestIn): Promise<UserInterest> =>
+    fetch(`${API_URL}/users/${userId}/interests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(interest),
+    }).then((res) => handleResponse<UserInterest>(res)),
+
+  deleteInterest: (userId: number, interestId: number): Promise<void> =>
+    fetch(`${API_URL}/users/${userId}/interests/${interestId}`, {
+      method: 'DELETE',
+    }).then((res) => handleResponse<void>(res)),
 }

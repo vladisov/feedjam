@@ -70,6 +70,7 @@ class UserFeedItemIn(BaseModel):
     points: int | None = None
     views: int | None = None
     summary: str | None = None
+    rank_score: float = 0.0
 
 
 class UserFeedItemOut(BaseModel):
@@ -88,6 +89,7 @@ class UserFeedItemOut(BaseModel):
     points: int | None = None
     views: int | None = None
     summary: str | None = None
+    rank_score: float = 0.0
     state: ItemState
     created_at: datetime
     updated_at: datetime

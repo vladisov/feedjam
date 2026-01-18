@@ -10,6 +10,7 @@ class SourceIn(BaseModel):
 
     name: str
     resource_url: str
+    source_type: str = "rss"  # Default to RSS
 
 
 class SourceOut(BaseModel):
@@ -20,5 +21,6 @@ class SourceOut(BaseModel):
     id: int
     name: str
     resource_url: str
+    source_type: str
     is_active: bool
     created_at: datetime

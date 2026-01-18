@@ -13,13 +13,8 @@ from starlette.testclient import TestClient
 
 from main import app
 from repository.db import Base, get_db
-from repository.feed_storage import FeedStorage
-from repository.source_storage import SourceStorage
-from repository.subscription_storage import SubscriptionStorage
-from repository.user_storage import UserStorage
 from schemas import SourceIn, SubscriptionOut, UserIn, UserOut
-from service.data_extractor import DataExtractor
-from service.feed_service import FeedService
+from service.factory import ServiceFactory
 
 # --- Test Database Setup ---
 
@@ -59,6 +54,7 @@ class BaseTestCase:
 
     client: TestClient
     db: Session
+    factory: ServiceFactory
 
     @pytest.fixture(autouse=True)
     def setup(self):
@@ -70,20 +66,18 @@ class BaseTestCase:
         self.client = TestClient(app)
         self.db = next(override_get_db())
 
-        # Create storages
-        self.user_storage = UserStorage(self.db)
-        self.source_storage = SourceStorage(self.db)
-        self.subscription_storage = SubscriptionStorage(self.db)
-        self.feed_storage = FeedStorage(self.db)
+        # Create factory (provides all storages and services)
+        self.factory = ServiceFactory(self.db, openai_key="")
 
-        # Create services
-        self.data_extractor = DataExtractor("")  # Empty key for tests
-        self.feed_service = FeedService(
-            self.feed_storage,
-            self.subscription_storage,
-            self.source_storage,
-            self.data_extractor,
-        )
+        # Convenience aliases for commonly used components
+        self.user_storage = self.factory.user_storage
+        self.source_storage = self.factory.source_storage
+        self.subscription_storage = self.factory.subscription_storage
+        self.feed_storage = self.factory.feed_storage
+        self.interest_storage = self.factory.interest_storage
+        self.like_history_storage = self.factory.like_history_storage
+        self.feed_service = self.factory.feed_service
+        self.ranking_service = self.factory.ranking_service
 
         yield
 
