@@ -10,3 +10,4 @@ sqlite_feedjam.db
 .idea
 *.iml
 **/.pytest_cache.DS_Store
+*.tsbuildinfo

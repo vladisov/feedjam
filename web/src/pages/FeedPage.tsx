@@ -2,25 +2,17 @@ import { useState, useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { FeedList } from '@/components/feed/FeedList'
+import { SearchBar } from '@/components/feed/SearchBar'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
-import { ArrowPathIcon, BookmarkIcon, Bars3BottomLeftIcon, EyeSlashIcon, CheckIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, Bars3BottomLeftIcon, EyeSlashIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { applySearch } from '@/lib/search'
 import type { FeedItem } from '@/types/feed'
 
 // TODO: Make this configurable or remove when multi-user
 const DEFAULT_USER_ID = 1
-
-type FeedTab = 'all' | 'saved'
-
-const TAB_BASE_STYLES = 'px-4 py-2 text-sm font-medium transition-colors'
-const TAB_ACTIVE_STYLES = 'border-b-2 border-primary text-primary'
-const TAB_INACTIVE_STYLES = 'text-muted-foreground hover:text-foreground'
-
-function getTabStyles(isActive: boolean): string {
-  return cn(TAB_BASE_STYLES, isActive ? TAB_ACTIVE_STYLES : TAB_INACTIVE_STYLES)
-}
 
 function useFeedItemMutation(
   mutationFn: (item: FeedItem) => Promise<unknown>
@@ -40,8 +32,8 @@ function getInitialShowSummaries(): boolean {
   return localStorage.getItem('feedShowSummaries') !== 'false'
 }
 
-export default function FeedPage() {
-  const [activeTab, setActiveTab] = useState<FeedTab>('all')
+export default function FeedPage(): React.ReactElement {
+  const [searchQuery, setSearchQuery] = useState('')
   const [showSummaries, setShowSummaries] = useState(getInitialShowSummaries)
   const { items, isLoading, error, refetch } = useFeedQuery({
     userId: DEFAULT_USER_ID,
@@ -79,18 +71,15 @@ export default function FeedPage() {
     },
   })
 
-  // Filter out hidden items, then apply tab filter
-  const visibleItems = useMemo(() => items.filter((item) => !item.state.hide), [items])
-  const filteredItems = useMemo(
-    () => (activeTab === 'saved' ? visibleItems.filter((item) => item.state.star) : visibleItems),
-    [visibleItems, activeTab]
-  )
+  // Apply search/filter to items
+  const filteredItems = useMemo(() => applySearch(items, searchQuery), [items, searchQuery])
 
-  const savedCount = useMemo(() => visibleItems.filter((item) => item.state.star).length, [visibleItems])
+  // Counts for action buttons (based on visible non-hidden items)
+  const visibleItems = useMemo(() => items.filter((item) => !item.state.hide), [items])
   const readCount = useMemo(() => visibleItems.filter((item) => item.state.read).length, [visibleItems])
   const unreadCount = useMemo(() => visibleItems.filter((item) => !item.state.read).length, [visibleItems])
 
-  const toggleShowSummaries = () => {
+  function toggleShowSummaries(): void {
     const newValue = !showSummaries
     setShowSummaries(newValue)
     localStorage.setItem('feedShowSummaries', String(newValue))
@@ -170,23 +159,9 @@ export default function FeedPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-4 flex gap-1 border-b border-border">
-        <button onClick={() => setActiveTab('all')} className={getTabStyles(activeTab === 'all')}>
-          All
-        </button>
-        <button
-          onClick={() => setActiveTab('saved')}
-          className={cn(getTabStyles(activeTab === 'saved'), 'flex items-center gap-1.5')}
-        >
-          <BookmarkIcon className="h-4 w-4" />
-          Saved
-          {savedCount > 0 && (
-            <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs">
-              {savedCount}
-            </span>
-          )}
-        </button>
+      {/* Search */}
+      <div className="mb-4">
+        <SearchBar value={searchQuery} onChange={setSearchQuery} />
       </div>
 
       {/* Feed list */}
