@@ -1,6 +1,7 @@
 """Feed service - handles feed fetching and generation."""
 
 from api.exceptions import EntityNotFoundException, ParserNotFoundException
+from model.feed import FeedItem
 from repository.feed_storage import FeedStorage
 from repository.like_history_storage import LikeHistoryStorage
 from repository.source_storage import SourceStorage
@@ -84,6 +85,20 @@ class FeedService:
     def get_user_feed(self, user_id: int) -> UserFeedOut | None:
         """Get the active user feed."""
         return self.feed_storage.get_user_feed(user_id)
+
+    def get_daily_digest(self, user_id: int, top_n: int = 5) -> list[UserFeedItemIn]:
+        """Get top N items from the last 24 hours, ranked by interests.
+
+        Returns a digest of the best items across all subscribed sources.
+        """
+        recent_items = self.feed_storage.get_recent_items_by_user(user_id, hours=24, limit=100)
+
+        if not recent_items:
+            return []
+
+        items = [self._feed_item_to_user_feed_item(item, user_id) for item in recent_items]
+        ranked = self.ranking_service.compute_rank_scores(user_id, items)
+        return ranked[:top_n]
 
     def generate_user_feed(self, user_id: int) -> None:
         """Generate and save a new user feed."""
@@ -270,20 +285,20 @@ class FeedService:
         """Get new feed items not already seen."""
         all_items = self.get_items(user_id)
         new_items = [item for item in all_items if item.id not in seen_ids]
+        return [self._feed_item_to_user_feed_item(item, user_id) for item in new_items]
 
-        return [
-            UserFeedItemIn(
-                feed_item_id=item.id,
-                user_id=user_id,
-                title=item.title,
-                source_name=item.source_name,
-                state=ItemState(),
-                description=item.description or "",
-                comments_url=item.comments_url,
-                article_url=item.article_url,
-                points=item.points,
-                summary=item.summary,
-                views=item.views,
-            )
-            for item in new_items
-        ]
+    def _feed_item_to_user_feed_item(self, item: FeedItem, user_id: int) -> UserFeedItemIn:
+        """Convert a FeedItem model to UserFeedItemIn schema."""
+        return UserFeedItemIn(
+            feed_item_id=item.id,
+            user_id=user_id,
+            title=item.title,
+            source_name=item.source_name,
+            state=ItemState(),
+            description=item.description or "",
+            article_url=item.article_url,
+            comments_url=item.comments_url,
+            points=item.points,
+            views=item.views,
+            summary=item.summary,
+        )

@@ -104,9 +104,10 @@ class TestRankingService(BaseTestCase):
         """Test that items with more points/views rank higher."""
         user = self.create_user_direct("test")
 
+        # Use a source type that has points (reddit, hackernews, etc.)
         items = [
-            self._create_feed_item("Popular article", points=1000, views=5000),
-            self._create_feed_item("Unpopular article", points=10, views=50),
+            self._create_feed_item("Popular article", source_name="reddit-r-test", points=1000, views=5000),
+            self._create_feed_item("Unpopular article", source_name="reddit-r-test", points=10, views=50),
         ]
 
         ranked = self.ranking_service.compute_rank_scores(user.id, items)

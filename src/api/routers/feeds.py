@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 
 from api.exceptions import EntityNotFoundException
 from schemas import UserFeedOut
-from schemas.feeds import SearchResultItem
+from schemas.feeds import SearchResultItem, UserFeedItemIn
 from service.feed_service import FeedService
 from utils.dependencies import get_current_user_id, get_feed_service
 
@@ -32,6 +32,15 @@ def get_feed(
             user_feed_items=[],
         )
     return user_feed
+
+
+@router.get("/digest", response_model=list[UserFeedItemIn])
+def get_daily_digest(
+    user_id: int = Depends(get_current_user_id),
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    """Get daily digest - top 5 items from the last 24 hours, ranked by interests."""
+    return feed_service.get_daily_digest(user_id, top_n=5)
 
 
 @router.post("/mark-read/{item_id}")

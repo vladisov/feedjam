@@ -1,5 +1,7 @@
 """Feed repository."""
 
+from datetime import datetime, timedelta
+
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -12,6 +14,13 @@ from schemas.feeds import UserFeedIn
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _sanitize_string(value: str | None) -> str | None:
+    """Remove NUL characters that PostgreSQL doesn't allow in text fields."""
+    if value is None:
+        return None
+    return value.replace("\x00", "")
 
 
 class FeedStorage:
@@ -219,7 +228,13 @@ class FeedStorage:
         if self._item_exists(item):
             return
 
-        feed_item = FeedItem(**item.model_dump())
+        # Sanitize text fields to remove NUL characters
+        item_data = item.model_dump()
+        for field in ("title", "description", "summary", "link", "article_url", "comments_url"):
+            if field in item_data:
+                item_data[field] = _sanitize_string(item_data[field])
+
+        feed_item = FeedItem(**item_data)
         feed.feed_items.append(feed_item)
 
     def _item_exists(self, item: FeedItemIn) -> bool:
@@ -256,6 +271,32 @@ class FeedStorage:
                 FeedItem.created_at.desc(),
             )
             .offset(skip)
+            .limit(limit)
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
+    def get_recent_items_by_user(
+        self, user_id: int, hours: int = 24, limit: int = 100
+    ) -> list[FeedItem]:
+        """Get feed items from the last N hours for a user's subscriptions."""
+        stmt = select(Subscription).where(Subscription.user_id == user_id)
+        subscriptions = self.db.execute(stmt).scalars().all()
+        source_ids = [sub.source_id for sub in subscriptions]
+
+        if not source_ids:
+            return []
+
+        cutoff = datetime.now() - timedelta(hours=hours)
+
+        stmt = (
+            select(FeedItem)
+            .join(feed_feeditem_association, FeedItem.id == feed_feeditem_association.c.feeditem_id)
+            .join(Feed, feed_feeditem_association.c.feed_id == Feed.id)
+            .where(
+                Feed.source_id.in_(source_ids),
+                FeedItem.created_at >= cutoff,
+            )
+            .order_by(FeedItem.created_at.desc())
             .limit(limit)
         )
         return list(self.db.execute(stmt).scalars().all())

@@ -1,14 +1,44 @@
 """Ranking service for personalized feed scoring."""
 
 import math
+from collections import defaultdict
+from dataclasses import dataclass
 
 from repository.interest_storage import InterestStorage
 from repository.like_history_storage import LikeHistoryStorage
 from schemas.feeds import UserFeedItemIn
 
 
+@dataclass
+class SourceTypeConfig:
+    """Configuration for how to handle popularity for a source type."""
+
+    has_points: bool  # Whether this source type has meaningful point/vote data
+    neutral_score: float = 0.5  # Score to use when no points available
+
+
+# Source types that have meaningful popularity metrics
+SOURCE_TYPE_CONFIGS: dict[str, SourceTypeConfig] = {
+    "reddit": SourceTypeConfig(has_points=True),
+    "hackernews": SourceTypeConfig(has_points=True),
+    "youtube": SourceTypeConfig(has_points=True),  # views
+    "github": SourceTypeConfig(has_points=True),  # stars
+    "telegram": SourceTypeConfig(has_points=False),
+    "twitter": SourceTypeConfig(has_points=False),
+    "rss": SourceTypeConfig(has_points=False),
+}
+
+DEFAULT_SOURCE_CONFIG = SourceTypeConfig(has_points=False)
+
+
 class RankingService:
-    """Service for computing personalized rank scores for feed items."""
+    """Service for computing personalized rank scores for feed items.
+
+    Scoring is designed to be fair across different source types:
+    - Sources with points (HN, Reddit) are normalized within their type
+    - Sources without points (RSS, blogs) receive a neutral popularity score
+    - This prevents high-point sources from dominating the feed
+    """
 
     # Weight configuration for score components
     INTEREST_WEIGHT = 0.4
@@ -30,56 +60,66 @@ class RankingService:
         """Compute rank scores for a list of feed items.
 
         Scoring components:
-        - interest_score: substring match of user topics in title/summary
-        - source_affinity: (likes - dislikes) / total for source
-        - popularity: log-normalized points + views
-        - recency: decay based on item age
-
-        Combined score (configurable weights):
-        score = 0.4 * interest + 0.3 * source_affinity + 0.2 * popularity + 0.1 * recency
+        - interest_score: match of user topics in title/summary (40%)
+        - source_affinity: historical like ratio for source (30%)
+        - popularity: normalized within source type (20%)
+        - recency: decay based on item age (10%)
         """
         if not items:
             return items
 
-        # Load user data
+        # Load user preferences
         interests = self.interest_storage.get_as_map(user_id)
         source_affinities = self.like_history_storage.get_source_affinity_map(user_id)
 
-        # Compute max popularity for normalization
-        max_popularity = self._compute_max_popularity(items)
+        # Compute popularity normalizers per source type
+        popularity_context = self._build_popularity_context(items)
 
         # Score each item
         for item in items:
-            interest_score = self._compute_interest_score(item, interests)
-            source_score = self._compute_source_affinity(item, source_affinities)
-            popularity_score = self._compute_popularity_score(item, max_popularity)
-            recency_score = self._compute_recency_score(item)
-
-            item.rank_score = (
-                self.INTEREST_WEIGHT * interest_score
-                + self.SOURCE_AFFINITY_WEIGHT * source_score
-                + self.POPULARITY_WEIGHT * popularity_score
-                + self.RECENCY_WEIGHT * recency_score
+            item.rank_score = self._compute_item_score(
+                item, interests, source_affinities, popularity_context
             )
 
         # Sort by rank_score descending
         items.sort(key=lambda x: x.rank_score, reverse=True)
-
         return items
+
+    def _compute_item_score(
+        self,
+        item: UserFeedItemIn,
+        interests: dict[str, float],
+        source_affinities: dict[str, float],
+        popularity_context: dict[str, float],
+    ) -> float:
+        """Compute the combined rank score for a single item."""
+        interest_score = self._compute_interest_score(item, interests)
+        source_score = self._compute_source_affinity(item, source_affinities)
+        popularity_score = self._compute_popularity_score(item, popularity_context)
+        recency_score = self._compute_recency_score(item)
+
+        return (
+            self.INTEREST_WEIGHT * interest_score
+            + self.SOURCE_AFFINITY_WEIGHT * source_score
+            + self.POPULARITY_WEIGHT * popularity_score
+            + self.RECENCY_WEIGHT * recency_score
+        )
+
+    # -------------------------------------------------------------------------
+    # Interest scoring
+    # -------------------------------------------------------------------------
 
     def _compute_interest_score(
         self, item: UserFeedItemIn, interests: dict[str, float]
     ) -> float:
         """Compute interest score based on topic matches in title/summary.
 
-        Returns a score in [0.0, 2.0] based on matched topics and their weights.
+        Returns a score in [0.0, 1.0] based on matched topics and their weights.
         """
         if not interests:
             return 0.0
 
-        # Combine title and summary for matching
-        text = (item.title + " " + (item.summary or "") + " " + (item.description or "")).lower()
-
+        text = self._get_searchable_text(item)
         score = 0.0
         matched_count = 0
 
@@ -88,61 +128,116 @@ class RankingService:
                 score += weight
                 matched_count += 1
 
-        # Normalize: return average weight of matched topics, capped at 2.0
         if matched_count > 0:
-            return min(score / matched_count, 2.0)
+            return min(score / matched_count, 1.0)
         return 0.0
+
+    def _get_searchable_text(self, item: UserFeedItemIn) -> str:
+        """Combine item fields into searchable text."""
+        parts = [item.title, item.summary or "", item.description or ""]
+        return " ".join(parts).lower()
+
+    # -------------------------------------------------------------------------
+    # Source affinity scoring
+    # -------------------------------------------------------------------------
 
     def _compute_source_affinity(
         self, item: UserFeedItemIn, source_affinities: dict[str, float]
     ) -> float:
-        """Compute source affinity score.
+        """Compute source affinity based on historical likes/dislikes.
 
-        Returns a score in [-1.0, 1.0] based on historical likes/dislikes for the source.
-        We normalize this to [0.0, 1.0] for the final score.
+        Returns a score in [0.0, 1.0], where 0.5 is neutral.
         """
         if not item.source_name:
-            return 0.5  # Neutral for unknown source
+            return 0.5
 
+        # Affinity is in [-1, 1], convert to [0, 1]
         affinity = source_affinities.get(item.source_name, 0.0)
-        # Convert from [-1, 1] to [0, 1]
         return (affinity + 1.0) / 2.0
 
-    def _compute_max_popularity(self, items: list[UserFeedItemIn]) -> float:
-        """Compute maximum popularity value for normalization."""
-        max_pop = 0.0
-        for item in items:
-            points = item.points or 0
-            views = item.views or 0
-            pop = self._raw_popularity(points, views)
-            if pop > max_pop:
-                max_pop = pop
-        return max_pop if max_pop > 0 else 1.0
+    # -------------------------------------------------------------------------
+    # Popularity scoring (per-source-type normalization)
+    # -------------------------------------------------------------------------
 
-    def _raw_popularity(self, points: int, views: int) -> float:
-        """Compute raw popularity using log normalization."""
-        # Use log1p to handle 0 values and reduce impact of very high values
-        return math.log1p(points) + 0.5 * math.log1p(views)
+    def _build_popularity_context(
+        self, items: list[UserFeedItemIn]
+    ) -> dict[str, float]:
+        """Build max popularity values per source type for normalization.
+
+        Returns a dict mapping source_type -> max_raw_popularity.
+        This ensures items are compared fairly within their source type.
+        """
+        max_by_type: dict[str, float] = defaultdict(float)
+
+        for item in items:
+            source_type = self._get_source_type(item.source_name)
+            config = SOURCE_TYPE_CONFIGS.get(source_type, DEFAULT_SOURCE_CONFIG)
+
+            if config.has_points:
+                raw = self._raw_popularity(item.points or 0, item.views or 0)
+                max_by_type[source_type] = max(max_by_type[source_type], raw)
+
+        # Ensure no zero denominators
+        return {k: max(v, 1.0) for k, v in max_by_type.items()}
 
     def _compute_popularity_score(
-        self, item: UserFeedItemIn, max_popularity: float
+        self, item: UserFeedItemIn, popularity_context: dict[str, float]
     ) -> float:
         """Compute normalized popularity score.
 
-        Returns a score in [0.0, 1.0] based on points and views.
+        For sources with points: normalize within source type [0.0, 1.0]
+        For sources without points: return neutral score (0.5)
         """
-        points = item.points or 0
-        views = item.views or 0
-        raw = self._raw_popularity(points, views)
+        source_type = self._get_source_type(item.source_name)
+        config = SOURCE_TYPE_CONFIGS.get(source_type, DEFAULT_SOURCE_CONFIG)
+
+        if not config.has_points:
+            return config.neutral_score
+
+        max_popularity = popularity_context.get(source_type, 1.0)
+        raw = self._raw_popularity(item.points or 0, item.views or 0)
         return raw / max_popularity
+
+    def _raw_popularity(self, points: int, views: int) -> float:
+        """Compute raw popularity using log normalization.
+
+        Log scale reduces the impact of extreme outliers while still
+        rewarding higher engagement.
+        """
+        return math.log1p(points) + 0.5 * math.log1p(views)
+
+    def _get_source_type(self, source_name: str | None) -> str:
+        """Extract source type from source name.
+
+        Examples:
+            'reddit-r-LocalLLaMA' -> 'reddit'
+            'hackernews-best' -> 'hackernews'
+            'my-blog-feed' -> 'rss'
+        """
+        if not source_name:
+            return "rss"
+
+        name_lower = source_name.lower()
+
+        # Check known prefixes
+        for source_type in SOURCE_TYPE_CONFIGS:
+            if name_lower.startswith(source_type):
+                return source_type
+
+        # Default to RSS for unknown sources
+        return "rss"
+
+    # -------------------------------------------------------------------------
+    # Recency scoring
+    # -------------------------------------------------------------------------
 
     def _compute_recency_score(self, item: UserFeedItemIn) -> float:
         """Compute recency score based on item age.
 
         Returns a score in [0.0, 1.0] where newer items score higher.
-        Uses exponential decay with half-life of 24 hours.
+
+        Note: Currently returns neutral 0.5 as we don't have timestamp
+        in UserFeedItemIn during scoring. Items are pre-sorted by recency.
         """
-        # For now, we don't have creation time in UserFeedItemIn during scoring
-        # Return a neutral score; items are already roughly ordered by recency
-        # In a full implementation, we'd need to pass the original item's created_at
+        # TODO: Add created_at to UserFeedItemIn for proper recency scoring
         return 0.5
