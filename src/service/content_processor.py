@@ -92,6 +92,48 @@ class ContentProcessor:
         has_content = bool(item.description and item.description.strip())
         return has_long_title or has_content
 
+    def process_items_smart(self, items: list[FeedItemIn]) -> list[FeedItemIn]:
+        """Process items with source-type awareness.
+
+        - For link aggregators (HN, Reddit): Fetch article content first
+        - For social media (Twitter, Telegram): Use post content directly
+        - For RSS/blogs: Fetch article if description is short
+        """
+        for item in items:
+            if self._should_fetch_content(item):
+                content = self._fetch_article_content(item)
+                if content:
+                    item.description = content[:3000]  # Limit for token budget
+
+        return self.process_items(items)
+
+    def _should_fetch_content(self, item: FeedItemIn) -> bool:
+        """Determine if we should fetch the full article."""
+        source = item.source_name.lower()
+
+        # Link aggregators - always fetch the actual article
+        if any(s in source for s in ['hackernews', 'reddit', 'lobsters']):
+            return bool(item.article_url)
+
+        # RSS/blogs - fetch if description is short (likely just a teaser)
+        if item.description and len(item.description) < 200:
+            return bool(item.article_url or item.link)
+
+        return False
+
+    def _fetch_article_content(self, item: FeedItemIn) -> str | None:
+        """Fetch article content from URL."""
+        url = item.article_url or item.link
+        if not url:
+            return None
+
+        try:
+            extractor = get_extractor(item.source_name)
+            return extractor(url) or None
+        except Exception as e:
+            logger.warning(f"Failed to fetch content from {url}: {e}")
+            return None
+
     def process_item_with_content(
         self, item: FeedItemIn, fetch_content: bool = True
     ) -> FeedItemIn:

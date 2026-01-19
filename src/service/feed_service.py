@@ -70,7 +70,7 @@ class FeedService:
         # Batch process items with LLM (summarize, extract topics, score quality)
         if config.ENABLE_SUMMARIZATION and items:
             try:
-                items = self.content_processor.process_items(items)
+                items = self.content_processor.process_items_smart(items)
             except Exception as e:
                 logger.warning(f"Failed to process items: {e}")
 

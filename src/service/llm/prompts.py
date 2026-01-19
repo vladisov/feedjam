@@ -9,7 +9,7 @@ Articles:
 
 For each article, provide:
 - title: A cleaned, concise title (max 80 characters). If the original title is already short and clear, return null. Otherwise, shorten and improve readability while preserving the key meaning.
-- summary: A 2-3 sentence summary (max 100 words). Capture the key points.
+- summary: A concise 1-2 sentence summary (MAX 250 characters). Focus on the key insight or news. Be direct, no filler phrases like "This article discusses...".
 - topics: 3-5 keyword topics for categorization (lowercase, single words or hyphenated phrases)
 - quality: A score from 0.0 to 1.0 based on:
   - Informativeness: Does it provide real value/information?

@@ -147,7 +147,7 @@ export function FeedCard({
 
       {showSummary && item.summary && (
         <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-          {truncate(item.summary, 200)}
+          {truncate(item.summary, 250)}
         </p>
       )}
 

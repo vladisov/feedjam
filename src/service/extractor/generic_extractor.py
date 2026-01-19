@@ -3,44 +3,43 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (compatible; FeedJam/1.0; +https://feedjam.app)'
+}
+
+MAX_CONTENT_LENGTH = 5000
+
 
 def extract_generic(url: str) -> str:
+    """Extract main text content from a URL."""
     try:
-        response = requests.get(url, timeout=3)
+        response = requests.get(url, timeout=5, headers=HEADERS)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Remove script and style elements
         for element in soup(["script", "style", "header", "footer", "nav"]):
             element.decompose()
 
-        # Extract content from <script> tags if needed
-        script_content = ""
-        for script in soup.find_all("script", type="application/ld+json"):
-            if script.string:
-                script_content += script.string + " "
-
-        # Focus on main content area
         main_content = (
-            soup.find("main") or soup.find("article") or soup.find("div", class_="content")
+            soup.find("main") or soup.find("article") or soup.find("div", class_="content") or soup
         )
-        if not main_content:
-            main_content = soup  # Fallback to the entire soup if specific main content not found
 
-        # Extract and concatenate text from all visible elements
-        texts = []
-        for element in main_content.find_all(text=True):  # type: ignore
-            if element.parent.name not in ["style", "script", "[document]", "head", "title"]:
-                texts.append(element.strip())
+        texts = [
+            element.strip()
+            for element in main_content.find_all(text=True)  # type: ignore
+            if element.parent.name not in ["style", "script", "[document]", "head", "title"]
+        ]
 
         article_text = " ".join(texts)
+        cleaned_text = re.sub(r"\s+", " ", article_text).strip()
 
-        # Remove any residual scripts or non-text content
-        cleaned_article_text = re.sub(r"\s+", " ", article_text)
-
-        return script_content + cleaned_article_text
+        return cleaned_text[:MAX_CONTENT_LENGTH]
     except requests.RequestException as e:
-        print(f"Request error: {e}")
+        logger.warning(f"Request error fetching {url}: {e}")
         return ""
     except Exception as e:
-        print(f"Error extracting content: {e}")
+        logger.warning(f"Error extracting content from {url}: {e}")
         return ""
