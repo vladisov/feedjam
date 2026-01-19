@@ -20,6 +20,8 @@ class UserOut(BaseModel):
     handle: str
     is_active: bool
     created_at: datetime
+    email_token: str | None = None
+    inbox_address: str | None = None
 
 
 class UserSettingsIn(BaseModel):

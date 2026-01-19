@@ -1,0 +1,17 @@
+# Cloudflare Worker configuration for FeedJam email handling
+# See: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "feedjam-email-worker"
+main = "email-worker.js"
+compatibility_date = "2024-01-01"
+
+# Email routing - this worker handles incoming emails
+# Configure in Cloudflare Dashboard: Email Routing > Routing Rules
+# Route: *@in.feedjam.app -> Worker: feedjam-email-worker
+
+[vars]
+# Development webhook URL - override in production
+WEBHOOK_URL = "http://localhost:8000/webhooks/inbound-email"
+
+# Set WEBHOOK_SECRET via wrangler secret:
+# wrangler secret put WEBHOOK_SECRET

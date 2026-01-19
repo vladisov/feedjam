@@ -1,10 +1,20 @@
 """User repository."""
 
+import secrets
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from model.user import User
 from schemas import UserIn, UserOut, UserSettingsIn, UserSettingsOut
+
+# Domain for inbound email addresses
+INBOX_DOMAIN = "in.feedjam.app"
+
+
+def _generate_email_token() -> str:
+    """Generate a unique 16-character token for email inbox address."""
+    return secrets.token_hex(8)
 
 
 class UserStorage:
@@ -19,33 +29,61 @@ class UserStorage:
     def get(self, user_id: int) -> UserOut | None:
         """Get a user by ID."""
         user = self._get_orm(user_id)
-        return UserOut.model_validate(user) if user else None
+        return self._to_user_out(user) if user else None
+
+    def _to_user_out(self, user: User) -> UserOut:
+        """Convert User ORM to UserOut with computed inbox_address."""
+        inbox_address = f"{user.email_token}@{INBOX_DOMAIN}" if user.email_token else None
+        return UserOut(
+            id=user.id,
+            handle=user.handle,
+            is_active=user.is_active,
+            created_at=user.created_at,
+            email_token=user.email_token,
+            inbox_address=inbox_address,
+        )
 
     def get_by_handle(self, handle: str) -> UserOut | None:
         """Get a user by handle."""
         stmt = select(User).where(User.handle == handle)
         user = self.db.execute(stmt).scalar_one_or_none()
-        return UserOut.model_validate(user) if user else None
+        return self._to_user_out(user) if user else None
+
+    def get_by_email_token(self, email_token: str) -> UserOut | None:
+        """Get a user by their email inbox token."""
+        stmt = select(User).where(User.email_token == email_token)
+        user = self.db.execute(stmt).scalar_one_or_none()
+        return self._to_user_out(user) if user else None
 
     def get_all(self, skip: int = 0, limit: int = 100) -> list[UserOut]:
         """Get all users with pagination."""
         stmt = select(User).offset(skip).limit(limit)
         users = self.db.execute(stmt).scalars().all()
-        return [UserOut.model_validate(u) for u in users]
+        return [self._to_user_out(u) for u in users]
 
     def get_active(self) -> list[UserOut]:
         """Get all active users."""
         stmt = select(User).where(User.is_active == True)
         users = self.db.execute(stmt).scalars().all()
-        return [UserOut.model_validate(u) for u in users]
+        return [self._to_user_out(u) for u in users]
 
     def create(self, user: UserIn) -> UserOut:
-        """Create a new user."""
-        db_user = User(handle=user.handle)
+        """Create a new user with a unique email token."""
+        db_user = User(handle=user.handle, email_token=_generate_email_token())
         self.db.add(db_user)
         self.db.commit()
         self.db.refresh(db_user)
-        return UserOut.model_validate(db_user)
+        return self._to_user_out(db_user)
+
+    def generate_email_token(self, user_id: int) -> str | None:
+        """Generate or regenerate email token for a user."""
+        user = self._get_orm(user_id)
+        if not user:
+            return None
+        user.email_token = _generate_email_token()
+        self.db.commit()
+        self.db.refresh(user)
+        return user.email_token
 
     def get_settings(self, user_id: int) -> UserSettingsOut | None:
         """Get user settings (with masked sensitive data)."""
@@ -61,8 +99,7 @@ class UserStorage:
             return None
 
         if settings.openai_api_key is not None:
-            # Empty string means remove the key
-            user.openai_api_key = settings.openai_api_key if settings.openai_api_key else None
+            user.openai_api_key = settings.openai_api_key or None
 
         self.db.commit()
         self.db.refresh(user)

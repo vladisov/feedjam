@@ -21,6 +21,11 @@ class SourceStorage:
         stmt = select(Source).where(Source.resource_url == resource_url)
         return self.db.execute(stmt).scalar_one_or_none()
 
+    def get_by_name(self, name: str) -> Source | None:
+        """Get a source by name."""
+        stmt = select(Source).where(Source.name == name)
+        return self.db.execute(stmt).scalar_one_or_none()
+
     def get_all(self, skip: int = 0, limit: int = 100) -> list[SourceOut]:
         """Get all sources with pagination."""
         stmt = select(Source).offset(skip).limit(limit)

@@ -66,3 +66,7 @@ def get_feed_service(factory: ServiceFactory = Depends(get_factory)):
 
 def get_subscription_service(factory: ServiceFactory = Depends(get_factory)):
     return factory.subscription_service
+
+
+def get_email_service(factory: ServiceFactory = Depends(get_factory)):
+    return factory.email_service

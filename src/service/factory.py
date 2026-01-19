@@ -25,6 +25,7 @@ from repository.subscription_storage import SubscriptionStorage
 from repository.user_item_state_storage import UserItemStateStorage
 from repository.user_storage import UserStorage
 from service.content_processor import ContentProcessor
+from service.email_service import EmailService
 from service.feed_service import FeedService
 from service.llm import LLMCache, LLMConfig, LLMService, OpenAIProvider
 from service.ranking_service import RankingService
@@ -132,4 +133,12 @@ class ServiceFactory:
             self.feed_storage,
             self.subscription_storage,
             self.source_storage,
+        )
+
+    @cached_property
+    def email_service(self) -> EmailService:
+        return EmailService(
+            self.user_storage,
+            self.source_storage,
+            self.feed_storage,
         )

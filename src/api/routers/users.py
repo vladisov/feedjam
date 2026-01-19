@@ -14,6 +14,7 @@ from schemas import (
     UserSettingsIn,
     UserSettingsOut,
 )
+from schemas.email import InboxAddressOut
 from utils.dependencies import get_current_user_id, get_interest_storage, get_user_storage
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -122,3 +123,31 @@ def update_my_settings(
     if not result:
         raise EntityNotFoundException("User", user_id)
     return result
+
+
+# --- Inbox endpoints (authenticated) ---
+@router.get("/me/inbox", response_model=InboxAddressOut)
+def get_my_inbox(
+    user_id: int = Depends(get_current_user_id),
+    user_storage: UserStorage = Depends(get_user_storage),
+):
+    """Get the inbox address for the authenticated user."""
+    user = user_storage.get(user_id)
+    if not user or not user.inbox_address:
+        raise EntityNotFoundException("Inbox", user_id)
+    return InboxAddressOut(inbox_address=user.inbox_address, email_token=user.email_token)
+
+
+@router.post("/me/inbox/regenerate", response_model=InboxAddressOut)
+def regenerate_my_inbox(
+    user_id: int = Depends(get_current_user_id),
+    user_storage: UserStorage = Depends(get_user_storage),
+):
+    """Regenerate the inbox address for the authenticated user.
+
+    Invalidates the old inbox address and creates a new one.
+    """
+    if not user_storage.generate_email_token(user_id):
+        raise EntityNotFoundException("User", user_id)
+    user = user_storage.get(user_id)
+    return InboxAddressOut(inbox_address=user.inbox_address, email_token=user.email_token)

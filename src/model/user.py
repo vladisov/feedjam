@@ -21,3 +21,6 @@ class User(Base):
 
     # User-provided API keys (optional, overrides system defaults)
     openai_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Unique token for inbound email address (e.g., {token}@in.feedjam.app)
+    email_token: Mapped[str | None] = mapped_column(String(32), unique=True, index=True, nullable=True)
