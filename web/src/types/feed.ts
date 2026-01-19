@@ -66,3 +66,41 @@ export interface UserSettingsIn {
   openai_api_key?: string | null
 }
 
+export interface SearchResultState {
+  read: boolean
+  like: boolean
+  dislike: boolean
+  star: boolean
+  hide: boolean
+}
+
+export interface SearchResultItem {
+  id: number
+  feed_item_id: number
+  title: string
+  link: string
+  source_name: string
+  description: string | null
+  article_url: string | null
+  comments_url: string | null
+  points: number | null
+  views: number | null
+  summary: string | null
+  published: string | null
+  created_at: string
+  updated_at: string
+  state: SearchResultState
+}
+
+export interface SearchParams {
+  liked?: boolean
+  disliked?: boolean
+  starred?: boolean
+  read?: boolean
+  hidden?: boolean
+  text?: string
+  source?: string
+  limit?: number
+  offset?: number
+}
+

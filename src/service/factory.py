@@ -22,6 +22,7 @@ from repository.like_history_storage import LikeHistoryStorage
 from repository.run_storage import RunStorage
 from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
+from repository.user_item_state_storage import UserItemStateStorage
 from repository.user_storage import UserStorage
 from service.content_processor import ContentProcessor
 from service.feed_service import FeedService
@@ -74,6 +75,10 @@ class ServiceFactory:
     def run_storage(self) -> RunStorage:
         return RunStorage(self.db)
 
+    @cached_property
+    def user_item_state_storage(self) -> UserItemStateStorage:
+        return UserItemStateStorage(self.db)
+
     # --- Services (cached) ---
 
     @cached_property
@@ -118,6 +123,7 @@ class ServiceFactory:
             self.content_processor,
             self.ranking_service,
             self.like_history_storage,
+            self.user_item_state_storage,
         )
 
     @cached_property

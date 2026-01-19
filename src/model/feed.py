@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Table, Text, func
+from sqlalchemy import Column, ForeignKey, Index, Integer, String, Table, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from repository.db import Base
@@ -18,7 +18,7 @@ class Feed(Base):
     __tablename__ = "feeds"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"))
+    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
@@ -30,10 +30,13 @@ class Feed(Base):
 
 class FeedItem(Base):
     __tablename__ = "feed_items"
+    __table_args__ = (
+        Index("ix_feed_items_local_id_source", "local_id", "source_name"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(1024))
-    link: Mapped[str] = mapped_column(String(2048))
+    link: Mapped[str] = mapped_column(String(2048), index=True)
     source_name: Mapped[str] = mapped_column(String(255))
     local_id: Mapped[str | None] = mapped_column(String(255), default=None)
     description: Mapped[str | None] = mapped_column(Text, default=None)
@@ -43,7 +46,7 @@ class FeedItem(Base):
     views: Mapped[int] = mapped_column(default=0)
     num_comments: Mapped[int] = mapped_column(default=0)
     summary: Mapped[str | None] = mapped_column(Text, default=None)
-    published: Mapped[datetime | None] = mapped_column(default=None)
+    published: Mapped[datetime | None] = mapped_column(default=None, index=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 

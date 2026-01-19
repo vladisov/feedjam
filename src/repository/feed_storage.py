@@ -42,9 +42,6 @@ class FeedStorage:
         user_feed = self.db.execute(stmt).unique().scalar_one_or_none()
         return UserFeedOut.model_validate(user_feed) if user_feed else None
 
-    def get_active_user_feed(self, user_id: int) -> UserFeedOut | None:
-        """Alias for get_user_feed."""
-        return self.get_user_feed(user_id)
 
     def save_user_feed(self, user_feed: UserFeedIn) -> int:
         """Save a new user feed."""
@@ -86,64 +83,64 @@ class FeedStorage:
         self.db.commit()
         return True
 
-    def toggle_like(self, user_id: int, item_id: int) -> tuple[bool, str | None, bool]:
+    def toggle_like(self, user_id: int, item_id: int) -> tuple[bool, str | None, int | None, bool]:
         """Toggle like state for a feed item.
 
-        Returns: (success, source_name, new_like_state)
+        Returns: (success, source_name, feed_item_id, new_like_state)
         """
         item = self._get_user_feed_item(user_id, item_id)
         if not item:
-            return False, None, False
+            return False, None, None, False
         # If currently disliked, remove dislike first
         if item.state.dislike:
             item.state.dislike = False
         item.state.like = not item.state.like
         self.db.commit()
-        return True, item.source_name, item.state.like
+        return True, item.source_name, item.feed_item_id, item.state.like
 
-    def toggle_dislike(self, user_id: int, item_id: int) -> tuple[bool, str | None, bool]:
+    def toggle_dislike(self, user_id: int, item_id: int) -> tuple[bool, str | None, int | None, bool]:
         """Toggle dislike state for a feed item.
 
-        Returns: (success, source_name, new_dislike_state)
+        Returns: (success, source_name, feed_item_id, new_dislike_state)
         """
         item = self._get_user_feed_item(user_id, item_id)
         if not item:
-            return False, None, False
+            return False, None, None, False
         # If currently liked, remove like first
         if item.state.like:
             item.state.like = False
         item.state.dislike = not item.state.dislike
         self.db.commit()
-        return True, item.source_name, item.state.dislike
+        return True, item.source_name, item.feed_item_id, item.state.dislike
 
-    def toggle_star(self, user_id: int, item_id: int) -> tuple[bool, bool]:
+    def toggle_star(self, user_id: int, item_id: int) -> tuple[bool, int | None, bool]:
         """Toggle star (save for later) state for a feed item.
 
-        Returns: (success, new_star_state)
+        Returns: (success, feed_item_id, new_star_state)
         """
         item = self._get_user_feed_item(user_id, item_id)
         if not item:
-            return False, False
+            return False, None, False
         item.state.star = not item.state.star
         self.db.commit()
-        return True, item.state.star
+        return True, item.feed_item_id, item.state.star
 
-    def toggle_hide(self, user_id: int, item_id: int) -> tuple[bool, bool]:
+    def toggle_hide(self, user_id: int, item_id: int) -> tuple[bool, int | None, bool]:
         """Toggle hide state for a feed item.
 
-        Returns: (success, new_hide_state)
+        Returns: (success, feed_item_id, new_hide_state)
         """
         item = self._get_user_feed_item(user_id, item_id)
         if not item:
-            return False, False
+            return False, None, False
         item.state.hide = not item.state.hide
         self.db.commit()
-        return True, item.state.hide
+        return True, item.feed_item_id, item.state.hide
 
-    def hide_read_items(self, user_id: int) -> int:
+    def hide_read_items(self, user_id: int) -> tuple[int, list[int]]:
         """Hide all read items for a user.
 
-        Returns: count of items hidden
+        Returns: (count of items hidden, list of feed_item_ids affected)
         """
         stmt = (
             select(UserFeedItem)
@@ -159,15 +156,16 @@ class FeedStorage:
             )
         )
         items = self.db.execute(stmt).scalars().all()
+        feed_item_ids = [item.feed_item_id for item in items]
         for item in items:
             item.state.hide = True
         self.db.commit()
-        return len(items)
+        return len(items), feed_item_ids
 
-    def mark_all_read(self, user_id: int) -> int:
+    def mark_all_read(self, user_id: int) -> tuple[int, list[int]]:
         """Mark all unread items as read for a user.
 
-        Returns: count of items marked as read
+        Returns: (count of items marked as read, list of feed_item_ids affected)
         """
         stmt = (
             select(UserFeedItem)
@@ -183,10 +181,11 @@ class FeedStorage:
             )
         )
         items = self.db.execute(stmt).scalars().all()
+        feed_item_ids = [item.feed_item_id for item in items]
         for item in items:
             item.state.read = True
         self.db.commit()
-        return len(items)
+        return len(items), feed_item_ids
 
     def get_item(self, user_id: int, item_id: int) -> UserFeedItem | None:
         """Get a single user feed item."""

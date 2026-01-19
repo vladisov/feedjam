@@ -5,6 +5,8 @@ import type {
   UserInterestIn,
   UserSettings,
   UserSettingsIn,
+  SearchResultItem,
+  SearchParams,
 } from '@/types/feed'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -70,6 +72,20 @@ export const api = {
 
   markAllRead: (userId: number): Promise<{ read_count: number }> =>
     post(`${API_URL}/feed/${userId}/mark-all-read`),
+
+  searchItems: (userId: number, params: SearchParams): Promise<SearchResultItem[]> => {
+    const searchParams = new URLSearchParams()
+    if (params.liked !== undefined) searchParams.set('liked', String(params.liked))
+    if (params.disliked !== undefined) searchParams.set('disliked', String(params.disliked))
+    if (params.starred !== undefined) searchParams.set('starred', String(params.starred))
+    if (params.read !== undefined) searchParams.set('read', String(params.read))
+    if (params.hidden !== undefined) searchParams.set('hidden', String(params.hidden))
+    if (params.text) searchParams.set('text', params.text)
+    if (params.source) searchParams.set('source', params.source)
+    if (params.limit) searchParams.set('limit', String(params.limit))
+    if (params.offset) searchParams.set('offset', String(params.offset))
+    return get(`${API_URL}/feed/${userId}/search?${searchParams.toString()}`)
+  },
 
   // Subscriptions
   getSubscriptions: (userId: number): Promise<Subscription[]> =>

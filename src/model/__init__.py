@@ -4,6 +4,7 @@ from .subscription import Subscription
 from .user import User
 from .user_feed import UserFeed, UserFeedItem
 from .user_interest import UserInterest
+from .user_item_state import UserItemState
 from .user_like_history import UserLikeHistory
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "UserFeed",
     "UserFeedItem",
     "UserInterest",
+    "UserItemState",
     "UserLikeHistory",
 ]

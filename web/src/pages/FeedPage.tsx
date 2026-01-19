@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { FeedList } from '@/components/feed/FeedList'
 import { SearchBar } from '@/components/feed/SearchBar'
@@ -8,8 +8,8 @@ import { Button } from '@/components/shared/Button'
 import { ArrowPathIcon, Bars3BottomLeftIcon, EyeSlashIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { applySearch } from '@/lib/search'
-import type { FeedItem } from '@/types/feed'
+import { applySearch, parseSearchQuery, requiresServerSearch, toSearchParams } from '@/lib/search'
+import type { FeedItem, SearchResultItem } from '@/types/feed'
 
 // TODO: Make this configurable or remove when multi-user
 const DEFAULT_USER_ID = 1
@@ -32,6 +32,25 @@ function getInitialShowSummaries(): boolean {
   return localStorage.getItem('feedShowSummaries') !== 'false'
 }
 
+function toFeedItem(item: SearchResultItem): FeedItem {
+  return {
+    id: item.id,
+    feed_item_id: item.feed_item_id,
+    title: item.title,
+    summary: item.summary,
+    description: item.description,
+    source_name: item.source_name,
+    article_url: item.article_url,
+    comments_url: item.comments_url,
+    points: item.points,
+    views: item.views,
+    rank_score: 0,
+    state: { id: 0, ...item.state },
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  }
+}
+
 export default function FeedPage(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSummaries, setShowSummaries] = useState(getInitialShowSummaries)
@@ -40,6 +59,18 @@ export default function FeedPage(): React.ReactElement {
   })
 
   const queryClient = useQueryClient()
+
+  // Parse search query to check if server search is needed
+  const parsedSearch = useMemo(() => parseSearchQuery(searchQuery), [searchQuery])
+  const needsServerSearch = useMemo(() => requiresServerSearch(parsedSearch), [parsedSearch])
+  const searchParams = useMemo(() => toSearchParams(parsedSearch), [parsedSearch])
+
+  // Server-side search (only enabled when state filters are used)
+  const serverSearch = useQuery({
+    queryKey: ['search', DEFAULT_USER_ID, searchParams],
+    queryFn: () => api.searchItems(DEFAULT_USER_ID, searchParams),
+    enabled: needsServerSearch,
+  })
 
   const handleToggleLike = useFeedItemMutation((item) =>
     api.toggleLike(DEFAULT_USER_ID, item.id)
@@ -71,13 +102,22 @@ export default function FeedPage(): React.ReactElement {
     },
   })
 
-  // Apply search/filter to items
-  const filteredItems = useMemo(() => applySearch(items, searchQuery), [items, searchQuery])
+  // Get filtered items: server search results or client-side filtered
+  const filteredItems = useMemo(() => {
+    if (needsServerSearch) {
+      return (serverSearch.data ?? []).map(toFeedItem)
+    }
+    return applySearch(items, searchQuery)
+  }, [needsServerSearch, serverSearch.data, items, searchQuery])
 
   // Counts for action buttons (based on visible non-hidden items)
-  const visibleItems = useMemo(() => items.filter((item) => !item.state.hide), [items])
-  const readCount = useMemo(() => visibleItems.filter((item) => item.state.read).length, [visibleItems])
-  const unreadCount = useMemo(() => visibleItems.filter((item) => !item.state.read).length, [visibleItems])
+  const { readCount, unreadCount } = useMemo(() => {
+    const visible = items.filter((item) => !item.state.hide)
+    return {
+      readCount: visible.filter((item) => item.state.read).length,
+      unreadCount: visible.filter((item) => !item.state.read).length,
+    }
+  }, [items])
 
   function toggleShowSummaries(): void {
     const newValue = !showSummaries
@@ -85,7 +125,9 @@ export default function FeedPage(): React.ReactElement {
     localStorage.setItem('feedShowSummaries', String(newValue))
   }
 
-  if (isLoading && items.length === 0) {
+  const isSearching = needsServerSearch && serverSearch.isLoading
+
+  if ((isLoading && items.length === 0) || isSearching) {
     return <PageLoader />
   }
 

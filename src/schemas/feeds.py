@@ -114,3 +114,25 @@ class UserFeedOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     user_feed_items: list[UserFeedItemOut]
+
+
+class SearchResultItem(BaseModel):
+    """Search result item - FeedItem with user state."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    feed_item_id: int
+    title: str
+    link: str
+    source_name: str
+    description: str | None = None
+    article_url: str | None = None
+    comments_url: str | None = None
+    points: int | None = None
+    views: int | None = None
+    summary: str | None = None
+    published: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+    state: ItemState

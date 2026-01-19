@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text, func
+from sqlalchemy import ForeignKey, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from repository.db import Base
@@ -8,6 +8,9 @@ from repository.db import Base
 
 class UserFeed(Base):
     __tablename__ = "user_feeds"
+    __table_args__ = (
+        Index("ix_user_feeds_user_active", "user_id", "is_active"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
@@ -33,9 +36,9 @@ class UserFeedItem(Base):
     __tablename__ = "user_feed_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    feed_item_id: Mapped[int] = mapped_column(ForeignKey("feed_items.id"))
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    user_feed_id: Mapped[int] = mapped_column(ForeignKey("user_feeds.id"))
+    feed_item_id: Mapped[int] = mapped_column(ForeignKey("feed_items.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user_feed_id: Mapped[int] = mapped_column(ForeignKey("user_feeds.id"), index=True)
     state_id: Mapped[int] = mapped_column(ForeignKey("user_feed_item_states.id"))
 
     # Denormalized fields for quick access

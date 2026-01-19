@@ -1,4 +1,4 @@
-import type { FeedItem } from '@/types/feed'
+import type { FeedItem, SearchParams } from '@/types/feed'
 
 export interface SearchFilters {
   liked?: boolean
@@ -13,6 +13,39 @@ export interface ParsedSearch {
   textTerms: string[]
   filters: SearchFilters
   sources: string[]
+}
+
+/**
+ * Check if the search query requires a server-side search.
+ * Server search is needed when state filters (is:liked, is:read, etc.) are used,
+ * as these need to search historical data beyond the active feed.
+ */
+export function requiresServerSearch(parsed: ParsedSearch): boolean {
+  return Object.keys(parsed.filters).length > 0
+}
+
+/**
+ * Convert ParsedSearch to API SearchParams.
+ */
+export function toSearchParams(parsed: ParsedSearch): SearchParams {
+  const params: SearchParams = {}
+
+  if (parsed.filters.liked) params.liked = true
+  if (parsed.filters.disliked) params.disliked = true
+  if (parsed.filters.read) params.read = true
+  if (parsed.filters.unread) params.read = false // unread = read:false
+  if (parsed.filters.saved) params.starred = true
+  if (parsed.filters.hidden) params.hidden = true
+
+  if (parsed.textTerms.length > 0) {
+    params.text = parsed.textTerms.join(' ')
+  }
+
+  if (parsed.sources.length > 0) {
+    params.source = parsed.sources[0] // API only supports one source filter
+  }
+
+  return params
 }
 
 const IS_FILTERS = ['liked', 'disliked', 'read', 'unread', 'saved', 'hidden'] as const
@@ -64,24 +97,12 @@ export function parseSearchQuery(query: string): ParsedSearch {
 }
 
 function matchesFilters(item: FeedItem, filters: SearchFilters): boolean {
-  if (filters.liked !== undefined && item.state.like !== filters.liked) {
-    return false
-  }
-  if (filters.disliked !== undefined && item.state.dislike !== filters.disliked) {
-    return false
-  }
-  if (filters.read !== undefined && item.state.read !== filters.read) {
-    return false
-  }
-  if (filters.unread !== undefined && item.state.read === filters.unread) {
-    return false
-  }
-  if (filters.saved !== undefined && item.state.star !== filters.saved) {
-    return false
-  }
-  if (filters.hidden !== undefined && item.state.hide !== filters.hidden) {
-    return false
-  }
+  if (filters.liked && !item.state.like) return false
+  if (filters.disliked && !item.state.dislike) return false
+  if (filters.read && !item.state.read) return false
+  if (filters.unread && item.state.read) return false
+  if (filters.saved && !item.state.star) return false
+  if (filters.hidden && !item.state.hide) return false
   return true
 }
 
@@ -103,7 +124,6 @@ function matchesTextTerms(item: FeedItem, terms: string[]): boolean {
 
 export function applySearch(items: FeedItem[], query: string): FeedItem[] {
   const parsed = parseSearchQuery(query)
-
   const hasFilters = Object.keys(parsed.filters).length > 0
   const hasSearch = parsed.textTerms.length > 0 || parsed.sources.length > 0
 
@@ -112,19 +132,13 @@ export function applySearch(items: FeedItem[], query: string): FeedItem[] {
   }
 
   return items.filter((item) => {
-    if (!matchesFilters(item, parsed.filters)) {
-      return false
-    }
-
     // Exclude hidden items unless explicitly searching for them
-    if (parsed.filters.hidden === undefined && item.state.hide) {
-      return false
-    }
+    if (!parsed.filters.hidden && item.state.hide) return false
 
-    if (!matchesSources(item, parsed.sources)) {
-      return false
-    }
-
-    return matchesTextTerms(item, parsed.textTerms)
+    return (
+      matchesFilters(item, parsed.filters) &&
+      matchesSources(item, parsed.sources) &&
+      matchesTextTerms(item, parsed.textTerms)
+    )
   })
 }

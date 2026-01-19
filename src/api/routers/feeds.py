@@ -2,10 +2,11 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from api.exceptions import EntityNotFoundException
 from schemas import UserFeedOut
+from schemas.feeds import SearchResultItem
 from service.feed_service import FeedService
 from utils.dependencies import get_feed_service
 
@@ -102,3 +103,36 @@ def mark_all_read(
 ):
     """Mark all unread items as read for a user."""
     return feed_service.mark_all_read(user_id)
+
+
+@router.get("/{user_id}/search", response_model=list[SearchResultItem])
+def search_items(
+    user_id: int,
+    liked: bool | None = Query(None, description="Filter by liked state"),
+    disliked: bool | None = Query(None, description="Filter by disliked state"),
+    starred: bool | None = Query(None, description="Filter by starred state"),
+    read: bool | None = Query(None, description="Filter by read state"),
+    hidden: bool | None = Query(None, description="Filter by hidden state"),
+    text: str | None = Query(None, description="Search text in title/summary"),
+    source: str | None = Query(None, description="Filter by source name"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    """Search user's historical items by state filters.
+
+    Use this for searching liked, saved, read items across all time.
+    For current feed items, use GET /feed/{user_id} instead.
+    """
+    return feed_service.search_items(
+        user_id=user_id,
+        liked=liked,
+        disliked=disliked,
+        starred=starred,
+        read=read,
+        hidden=hidden,
+        text=text,
+        source=source,
+        limit=limit,
+        offset=offset,
+    )
