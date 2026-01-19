@@ -24,6 +24,7 @@ from service.parser import (
     reddit_parser,  # noqa: F401
     rss_parser,  # noqa: F401
     telegram_parser,  # noqa: F401
+    twitter_parser,  # noqa: F401
     youtube_parser,  # noqa: F401
 )
 from service.parser.base import (

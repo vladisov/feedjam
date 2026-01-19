@@ -16,6 +16,7 @@ class SourceType(str, Enum):
     REDDIT = "reddit"
     YOUTUBE = "youtube"
     GITHUB = "github"
+    TWITTER = "twitter"
 
 
 class Source(Base):
