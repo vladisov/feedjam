@@ -78,8 +78,11 @@ class FeedService:
         # Preserve unread items from active feed
         items = self._get_unread_items(active_feed)
 
-        # Add new items
-        items += self._get_new_items(user_id, items)
+        # Get IDs of all items in active feed (read + unread) to exclude from "new"
+        seen_ids = self._get_seen_item_ids(active_feed)
+
+        # Add new items (excluding already-seen items)
+        items += self._get_new_items(user_id, seen_ids)
 
         # Apply personalized ranking
         items = self.ranking_service.compute_rank_scores(user_id, items)
@@ -172,14 +175,18 @@ class FeedService:
             if not item.state.read
         ]
 
-    def _get_new_items(
-        self, user_id: int, existing_items: list[UserFeedItemIn]
-    ) -> list[UserFeedItemIn]:
-        """Get new feed items not in existing items."""
-        existing_ids = {item.feed_item_id for item in existing_items}
+    def _get_seen_item_ids(self, active_feed: UserFeedOut | None) -> set[int]:
+        """Get IDs of all items in active feed (read + unread)."""
+        if not active_feed:
+            return set()
+        return {item.feed_item_id for item in active_feed.user_feed_items}
 
+    def _get_new_items(
+        self, user_id: int, seen_ids: set[int]
+    ) -> list[UserFeedItemIn]:
+        """Get new feed items not already seen."""
         all_items = self.get_items(user_id)
-        new_items = [item for item in all_items if item.id not in existing_ids]
+        new_items = [item for item in all_items if item.id not in seen_ids]
 
         return [
             UserFeedItemIn(

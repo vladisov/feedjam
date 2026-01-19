@@ -213,19 +213,37 @@ class FeedStorage:
         return feed
 
     def _add_item(self, item: FeedItemIn, feed: Feed) -> None:
-        """Add a feed item to a feed (skip if exists)."""
-        stmt = select(FeedItem).where(FeedItem.link == item.link)
-        if self.db.execute(stmt).scalar_one_or_none():
-            return  # Already exists
+        """Add a feed item to a feed if it doesn't already exist.
+
+        Deduplication: prefers local_id + source_name, falls back to link.
+        """
+        if self._item_exists(item):
+            return
 
         feed_item = FeedItem(**item.model_dump())
         feed.feed_items.append(feed_item)
-        self.db.add(feed_item)
+
+    def _item_exists(self, item: FeedItemIn) -> bool:
+        """Check if a feed item already exists in the database."""
+        # Prefer local_id + source_name (more reliable for HN, Reddit, etc.)
+        if item.local_id:
+            stmt = select(FeedItem.id).where(
+                and_(
+                    FeedItem.local_id == item.local_id,
+                    FeedItem.source_name == item.source_name,
+                )
+            )
+            if self.db.execute(stmt).scalar_one_or_none():
+                return True
+
+        # Fall back to link-based deduplication
+        stmt = select(FeedItem.id).where(FeedItem.link == item.link)
+        return self.db.execute(stmt).scalar_one_or_none() is not None
 
     def _get_items_by_sources(
         self, source_ids: list[int], skip: int = 0, limit: int = 100
     ) -> list[FeedItem]:
-        """Get feed items by source IDs."""
+        """Get feed items by source IDs, ordered by published date (newest first)."""
         if not source_ids:
             return []
 
@@ -234,6 +252,10 @@ class FeedStorage:
             .join(feed_feeditem_association, FeedItem.id == feed_feeditem_association.c.feeditem_id)
             .join(Feed, feed_feeditem_association.c.feed_id == Feed.id)
             .where(Feed.source_id.in_(source_ids))
+            .order_by(
+                FeedItem.published.desc().nulls_last(),
+                FeedItem.created_at.desc(),
+            )
             .offset(skip)
             .limit(limit)
         )

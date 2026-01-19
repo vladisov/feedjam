@@ -292,11 +292,12 @@ FeedJam uses a registry pattern for parsers, making it easy to add new source ty
 
 ### Available Parsers
 - `rss` - Generic RSS/Atom feeds (default fallback)
-- `hackernews` - Hacker News RSS feeds
-- `telegram` - Telegram public channels
+- `hackernews` - Hacker News RSS feeds (via hnrss.org)
+- `telegram` - Telegram public channels (via /s/ embed page)
 - `reddit` - Reddit subreddits and user feeds
 - `youtube` - YouTube channel and playlist feeds
 - `github` - GitHub releases, commits, and activity feeds
+- `twitter` - Twitter/X accounts (via Nitter RSS proxy)
 
 ### Source Types
 Defined in `model/source.py`:
@@ -308,6 +309,7 @@ class SourceType(str, Enum):
     REDDIT = "reddit"
     YOUTUBE = "youtube"
     GITHUB = "github"
+    TWITTER = "twitter"
 ```
 
 ### Adding a New Parser
@@ -392,6 +394,12 @@ source_type = detect_source_type(url)  # Returns "reddit", "rss", etc.
 from service.parser import get_registered_parsers
 print(get_registered_parsers())
 ```
+
+## Feed Storage
+
+- **Deduplication**: Items checked by `local_id + source_name` first, then by `link` URL
+- **Ordering**: By `published DESC NULLS LAST, created_at DESC`
+- **Feed generation**: Preserves unread items, adds new items, applies ranking, saves as new active feed
 
 ## Database Migrations (Alembic)
 

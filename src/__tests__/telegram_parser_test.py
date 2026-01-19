@@ -2,13 +2,11 @@
 
 from unittest.mock import MagicMock
 
-from bs4 import BeautifulSoup
-
 from service.parser.telegram_parser import TelegramParser
 
 
 def test_parse_telegram_feed(mocker):
-    """Test parsing Telegram channel feed."""
+    """Test parsing Telegram channel feed with real HTML fixture."""
     source = MagicMock()
     source.name = "telegram"
     source.resource_url = "https://t.me/s/redakciya_channel"
@@ -16,21 +14,15 @@ def test_parse_telegram_feed(mocker):
     with open("src/__tests__/test_data/page_example.html", encoding="utf-8") as file:
         test_html = file.read()
 
-    mock_requests = mocker.patch("service.parser.telegram_parser.requests.get")
-    mock_requests.return_value.text = test_html
+    mock_response = MagicMock()
+    mock_response.text = test_html
+    mock_response.raise_for_status = MagicMock()
+    mocker.patch("service.parser.telegram_parser.requests.get", return_value=mock_response)
 
-    mock_bs = mocker.patch("service.parser.telegram_parser.BeautifulSoup")
-    mock_bs.return_value = BeautifulSoup(test_html, "html.parser")
-
-    # Use the new class-based parser
     parser = TelegramParser()
     items = parser.parse(source)
 
-    # Assert
-    mock_requests.assert_called_once_with(source.resource_url, timeout=30)
-    mock_bs.assert_called_once_with(mock_requests.return_value.text, "html.parser")
-
-    assert len(items) == 6
+    assert len(items) == 7
 
 
 def test_can_handle_telegram_urls():

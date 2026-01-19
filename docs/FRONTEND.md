@@ -380,6 +380,16 @@ import { NavLink } from 'react-router-dom'
 </NavLink>
 ```
 
+## Search
+
+Client-side search with operators in `lib/search.ts`:
+- `is:liked`, `is:read`, `is:saved`, `is:hidden` - filter by state
+- `source:name` - filter by source
+- `"phrase"` - exact match
+- Free text searches title/summary
+
+Example: `is:liked source:hackernews rust`
+
 ## State Management
 
 - **Server state**: TanStack Query (caching, refetching, mutations)

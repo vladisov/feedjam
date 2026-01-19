@@ -28,3 +28,6 @@ class Source(Base):
     source_type: Mapped[str] = mapped_column(String(50), default=SourceType.RSS.value)
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    def __repr__(self) -> str:
+        return f"<Source(id={self.id}, name='{self.name}', resource_url='{self.resource_url}', source_type='{self.source_type}')>"

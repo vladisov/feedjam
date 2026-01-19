@@ -23,6 +23,7 @@ def _create_factory_with_user_key(db, user_id: int) -> ServiceFactory:
     user_api_key = UserStorage(db).get_openai_key(user_id)
     return ServiceFactory(db, openai_key=user_api_key)
 
+
 scheduler = BackgroundScheduler()
 
 
