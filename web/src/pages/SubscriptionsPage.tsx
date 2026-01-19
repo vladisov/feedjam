@@ -5,14 +5,9 @@ import { Button } from '@/components/shared/Button'
 import { PlusIcon, RssIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { formatDate } from '@/lib/utils'
 
-// TODO: Make this configurable or remove when multi-user
-const DEFAULT_USER_ID = 1
-
 export default function SubscriptionsPage() {
   const [newUrl, setNewUrl] = useState('')
-  const { subscriptions, isLoading, error, addSubscription, isAdding, deleteSubscription } = useSubscriptionsQuery({
-    userId: DEFAULT_USER_ID,
-  })
+  const { subscriptions, isLoading, error, addSubscription, isAdding, deleteSubscription } = useSubscriptionsQuery()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

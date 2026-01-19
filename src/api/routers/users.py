@@ -14,7 +14,7 @@ from schemas import (
     UserSettingsIn,
     UserSettingsOut,
 )
-from utils.dependencies import get_interest_storage, get_user_storage
+from utils.dependencies import get_current_user_id, get_interest_storage, get_user_storage
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -53,40 +53,40 @@ def get_user(
     return user
 
 
-# --- Interest endpoints ---
-@router.get("/{user_id}/interests", response_model=list[UserInterestOut])
-def list_interests(
-    user_id: int,
+# --- Interest endpoints (authenticated) ---
+@router.get("/me/interests", response_model=list[UserInterestOut])
+def list_my_interests(
+    user_id: int = Depends(get_current_user_id),
     interest_storage: InterestStorage = Depends(get_interest_storage),
 ):
-    """List all interests for a user."""
+    """List all interests for the authenticated user."""
     return interest_storage.get_by_user(user_id)
 
 
-@router.put("/{user_id}/interests", response_model=list[UserInterestOut])
-def replace_interests(
-    user_id: int,
+@router.put("/me/interests", response_model=list[UserInterestOut])
+def replace_my_interests(
     data: UserInterestsBulkIn,
+    user_id: int = Depends(get_current_user_id),
     interest_storage: InterestStorage = Depends(get_interest_storage),
 ):
-    """Replace all interests for a user (bulk update from UI)."""
+    """Replace all interests for the authenticated user (bulk update from UI)."""
     return interest_storage.replace_all(user_id, data.interests)
 
 
-@router.post("/{user_id}/interests", response_model=UserInterestOut)
-def add_interest(
-    user_id: int,
+@router.post("/me/interests", response_model=UserInterestOut)
+def add_my_interest(
     interest: UserInterestIn,
+    user_id: int = Depends(get_current_user_id),
     interest_storage: InterestStorage = Depends(get_interest_storage),
 ):
-    """Add a single interest for a user."""
+    """Add a single interest for the authenticated user."""
     return interest_storage.create(user_id, interest)
 
 
-@router.delete("/{user_id}/interests/{interest_id}")
-def delete_interest(
-    user_id: int,
+@router.delete("/me/interests/{interest_id}")
+def delete_my_interest(
     interest_id: int,
+    user_id: int = Depends(get_current_user_id),
     interest_storage: InterestStorage = Depends(get_interest_storage),
 ):
     """Delete a specific interest."""
@@ -98,26 +98,26 @@ def delete_interest(
     return {"status": "ok"}
 
 
-# --- Settings endpoints ---
-@router.get("/{user_id}/settings", response_model=UserSettingsOut)
-def get_settings(
-    user_id: int,
+# --- Settings endpoints (authenticated) ---
+@router.get("/me/settings", response_model=UserSettingsOut)
+def get_my_settings(
+    user_id: int = Depends(get_current_user_id),
     user_storage: UserStorage = Depends(get_user_storage),
 ):
-    """Get user settings."""
+    """Get settings for the authenticated user."""
     settings = user_storage.get_settings(user_id)
     if not settings:
         raise EntityNotFoundException("User", user_id)
     return settings
 
 
-@router.put("/{user_id}/settings", response_model=UserSettingsOut)
-def update_settings(
-    user_id: int,
+@router.put("/me/settings", response_model=UserSettingsOut)
+def update_my_settings(
     settings: UserSettingsIn,
+    user_id: int = Depends(get_current_user_id),
     user_storage: UserStorage = Depends(get_user_storage),
 ):
-    """Update user settings (API keys, etc)."""
+    """Update settings for the authenticated user (API keys, etc)."""
     result = user_storage.update_settings(user_id, settings)
     if not result:
         raise EntityNotFoundException("User", user_id)

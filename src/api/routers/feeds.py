@@ -8,17 +8,17 @@ from api.exceptions import EntityNotFoundException
 from schemas import UserFeedOut
 from schemas.feeds import SearchResultItem
 from service.feed_service import FeedService
-from utils.dependencies import get_feed_service
+from utils.dependencies import get_current_user_id, get_feed_service
 
 router = APIRouter(prefix="/feed", tags=["feeds"])
 
 
-@router.get("/{user_id}", response_model=UserFeedOut)
+@router.get("", response_model=UserFeedOut)
 def get_feed(
-    user_id: int,
+    user_id: int = Depends(get_current_user_id),
     feed_service: FeedService = Depends(get_feed_service),
 ):
-    """Get the active feed for a user."""
+    """Get the active feed for the authenticated user."""
     user_feed = feed_service.get_user_feed(user_id)
     if not user_feed:
         # Return empty feed instead of 404
@@ -34,10 +34,10 @@ def get_feed(
     return user_feed
 
 
-@router.post("/{user_id}/mark-read/{item_id}")
+@router.post("/mark-read/{item_id}")
 def mark_item_read(
-    user_id: int,
     item_id: int,
+    user_id: int = Depends(get_current_user_id),
     feed_service: FeedService = Depends(get_feed_service),
 ):
     """Mark a feed item as read."""
@@ -47,67 +47,66 @@ def mark_item_read(
     return {"status": "ok"}
 
 
-@router.post("/{user_id}/items/{item_id}/like")
+@router.post("/items/{item_id}/like")
 def toggle_like(
-    user_id: int,
     item_id: int,
+    user_id: int = Depends(get_current_user_id),
     feed_service: FeedService = Depends(get_feed_service),
 ):
     """Toggle like for a feed item."""
     return feed_service.toggle_like(user_id, item_id)
 
 
-@router.post("/{user_id}/items/{item_id}/dislike")
+@router.post("/items/{item_id}/dislike")
 def toggle_dislike(
-    user_id: int,
     item_id: int,
+    user_id: int = Depends(get_current_user_id),
     feed_service: FeedService = Depends(get_feed_service),
 ):
     """Toggle dislike for a feed item."""
     return feed_service.toggle_dislike(user_id, item_id)
 
 
-@router.post("/{user_id}/items/{item_id}/star")
+@router.post("/items/{item_id}/star")
 def toggle_star(
-    user_id: int,
     item_id: int,
+    user_id: int = Depends(get_current_user_id),
     feed_service: FeedService = Depends(get_feed_service),
 ):
     """Toggle star (save for later) for a feed item."""
     return feed_service.toggle_star(user_id, item_id)
 
 
-@router.post("/{user_id}/items/{item_id}/hide")
+@router.post("/items/{item_id}/hide")
 def toggle_hide(
-    user_id: int,
     item_id: int,
+    user_id: int = Depends(get_current_user_id),
     feed_service: FeedService = Depends(get_feed_service),
 ):
     """Toggle hide for a feed item."""
     return feed_service.toggle_hide(user_id, item_id)
 
 
-@router.post("/{user_id}/hide-read")
+@router.post("/hide-read")
 def hide_read_items(
-    user_id: int,
+    user_id: int = Depends(get_current_user_id),
     feed_service: FeedService = Depends(get_feed_service),
 ):
     """Hide all read items for a user."""
     return feed_service.hide_read_items(user_id)
 
 
-@router.post("/{user_id}/mark-all-read")
+@router.post("/mark-all-read")
 def mark_all_read(
-    user_id: int,
+    user_id: int = Depends(get_current_user_id),
     feed_service: FeedService = Depends(get_feed_service),
 ):
     """Mark all unread items as read for a user."""
     return feed_service.mark_all_read(user_id)
 
 
-@router.get("/{user_id}/search", response_model=list[SearchResultItem])
+@router.get("/search", response_model=list[SearchResultItem])
 def search_items(
-    user_id: int,
     liked: bool | None = Query(None, description="Filter by liked state"),
     disliked: bool | None = Query(None, description="Filter by disliked state"),
     starred: bool | None = Query(None, description="Filter by starred state"),
@@ -117,12 +116,13 @@ def search_items(
     source: str | None = Query(None, description="Filter by source name"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    user_id: int = Depends(get_current_user_id),
     feed_service: FeedService = Depends(get_feed_service),
 ):
     """Search user's historical items by state filters.
 
     Use this for searching liked, saved, read items across all time.
-    For current feed items, use GET /feed/{user_id} instead.
+    For current feed items, use GET /feed instead.
     """
     return feed_service.search_items(
         user_id=user_id,

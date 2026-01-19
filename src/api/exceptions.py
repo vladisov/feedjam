@@ -50,3 +50,24 @@ class ParserNotFoundException(FeedJamException):
             message=f"No parser available for source type: {source_type}",
             details={"source_type": source_type},
         )
+
+
+class AuthException(FeedJamException):
+    """Raised when authentication fails."""
+
+    def __init__(self, message: str = "Authentication failed"):
+        super().__init__(message=message, details={"error": "auth_error"})
+
+
+class InvalidCredentialsException(AuthException):
+    """Raised when login credentials are invalid."""
+
+    def __init__(self):
+        super().__init__(message="Invalid email or password")
+
+
+class InvalidTokenException(AuthException):
+    """Raised when a token is invalid or expired."""
+
+    def __init__(self):
+        super().__init__(message="Invalid or expired token")

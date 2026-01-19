@@ -113,7 +113,7 @@ class LLMCache:
             values = self._client.mget(keys)
             return {
                 h: json.loads(v) if v else None
-                for h, v in zip(hashes, values)
+                for h, v in zip(hashes, values, strict=False)
             }
         except Exception as e:
             logger.warning(f"Cache mget error: {e}")
@@ -158,7 +158,7 @@ class LLMCache:
             values = self._client.mget(keys)
             return {
                 h: json.loads(v) if v else None
-                for h, v in zip(hashes, values)
+                for h, v in zip(hashes, values, strict=False)
             }
         except Exception as e:
             logger.warning(f"Cache mget error: {e}")

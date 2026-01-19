@@ -4,11 +4,10 @@ import type { Subscription } from '@/types/feed'
 import { toast } from 'sonner'
 
 interface UseSubscriptionsQueryOptions {
-  userId: number
   enabled?: boolean
 }
 
-export function useSubscriptionsQuery({ userId, enabled = true }: UseSubscriptionsQueryOptions) {
+export function useSubscriptionsQuery({ enabled = true }: UseSubscriptionsQueryOptions = {}) {
   const queryClient = useQueryClient()
 
   const {
@@ -17,16 +16,16 @@ export function useSubscriptionsQuery({ userId, enabled = true }: UseSubscriptio
     error,
     refetch,
   } = useQuery<Subscription[], Error>({
-    queryKey: ['subscriptions', userId],
-    queryFn: () => api.getSubscriptions(userId),
+    queryKey: ['subscriptions'],
+    queryFn: () => api.getSubscriptions(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled,
   })
 
   const addSubscription = useMutation({
-    mutationFn: (resourceUrl: string) => api.addSubscription(resourceUrl, userId),
+    mutationFn: (resourceUrl: string) => api.addSubscription(resourceUrl),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions', userId] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
       toast.success('Subscription added')
     },
     onError: (error: Error) => {
@@ -37,7 +36,7 @@ export function useSubscriptionsQuery({ userId, enabled = true }: UseSubscriptio
   const deleteSubscription = useMutation({
     mutationFn: (subscriptionId: number) => api.deleteSubscription(subscriptionId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions', userId] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
       toast.success('Subscription removed')
     },
     onError: (error: Error) => {

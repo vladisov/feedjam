@@ -104,3 +104,29 @@ export interface SearchParams {
   offset?: number
 }
 
+// Auth types
+export interface AuthUser {
+  id: number
+  email: string
+  handle: string
+  is_active: boolean
+  is_verified: boolean
+  created_at: string
+}
+
+export interface TokenResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+}
+
+export interface LoginCredentials {
+  email: string
+  password: string
+}
+
+export interface RegisterCredentials {
+  email: string
+  password: string
+}
+

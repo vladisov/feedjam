@@ -6,13 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.exceptions import (
+    AuthException,
     DuplicateEntityException,
     EntityNotFoundException,
     FeedJamException,
+    InvalidCredentialsException,
+    InvalidTokenException,
     ParserNotFoundException,
     ValidationException,
 )
-from api.routers import feeds_router, runs_router, subscriptions_router, users_router
+from api.routers import auth_router, feeds_router, runs_router, subscriptions_router, users_router
 from api.schemas import ErrorResponse, HealthResponse
 from utils.config import CREATE_ITEMS_ON_STARTUP
 from utils.logger import get_logger
@@ -20,27 +23,11 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def ensure_default_user() -> None:
-    """Create default user if not exists."""
-    from repository.db import get_db_session
-    from schemas import UserIn
-    from service.factory import ServiceFactory
-
-    with get_db_session() as db:
-        factory = ServiceFactory(db)
-        if not factory.user_storage.get(1):
-            factory.user_storage.create(UserIn(handle="default"))
-            logger.info("Created default user (id=1)")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan events."""
     # Startup
     logger.info("Starting FeedJam API...")
-
-    # Always ensure default user exists
-    ensure_default_user()
 
     if CREATE_ITEMS_ON_STARTUP:
         from startup_runner import on_startup
@@ -84,6 +71,9 @@ EXCEPTION_STATUS_CODES: dict[type[FeedJamException], int] = {
     DuplicateEntityException: 400,
     ValidationException: 400,
     ParserNotFoundException: 400,
+    AuthException: 401,
+    InvalidCredentialsException: 401,
+    InvalidTokenException: 401,
 }
 
 
@@ -99,6 +89,7 @@ async def feedjam_exception_handler(request: Request, exc: FeedJamException) -> 
 
 # --- Routers ---
 
+app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(feeds_router)
 app.include_router(subscriptions_router)

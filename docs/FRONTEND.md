@@ -13,10 +13,13 @@
 web/src/
 ├── components/
 │   ├── feed/           # Feed-specific components
-│   └── shared/         # Reusable UI components
-├── pages/              # Route page components
+│   └── shared/         # Reusable UI components (ProtectedRoute, etc.)
+├── contexts/
+│   └── AuthContext.tsx # Authentication state and methods
+├── pages/              # Route page components (LoginPage, RegisterPage, etc.)
 ├── hooks/              # Custom React hooks (queries, utilities)
-├── api/                # API client
+├── lib/
+│   └── api.ts          # API client with auth
 ├── types/              # TypeScript type definitions
 ├── utils/              # Helper functions
 ├── App.tsx             # Root component with routing
@@ -313,6 +316,214 @@ VITE_API_URL=http://localhost:8001
 # In Docker, uses /api proxy (default)
 ```
 
+## Authentication
+
+### Overview
+- JWT tokens stored in localStorage
+- Auto-refresh on 401 responses
+- AuthContext provides auth state to entire app
+- ProtectedRoute redirects unauthenticated users to login
+
+### Auth Types (`types/feed.ts`)
+```tsx
+interface AuthUser {
+  id: number
+  email: string
+  handle: string
+  is_active: boolean
+  is_verified: boolean
+  created_at: string
+}
+
+interface TokenResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+}
+
+interface LoginCredentials {
+  email: string
+  password: string
+}
+
+interface RegisterCredentials {
+  email: string
+  password: string
+}
+```
+
+### Token Storage (`lib/api.ts`)
+```tsx
+const ACCESS_TOKEN_KEY = 'feedjam_access_token'
+const REFRESH_TOKEN_KEY = 'feedjam_refresh_token'
+
+export const tokenStorage = {
+  getAccessToken: (): string | null => localStorage.getItem(ACCESS_TOKEN_KEY),
+  getRefreshToken: (): string | null => localStorage.getItem(REFRESH_TOKEN_KEY),
+  setTokens: (access: string, refresh: string): void => {
+    localStorage.setItem(ACCESS_TOKEN_KEY, access)
+    localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
+  },
+  clearTokens: (): void => {
+    localStorage.removeItem(ACCESS_TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+  },
+}
+```
+
+### Auth Headers
+All authenticated requests include the Authorization header:
+```tsx
+function getAuthHeaders(): HeadersInit {
+  const token = tokenStorage.getAccessToken()
+  return token ? { 'Authorization': `Bearer ${token}` } : {}
+}
+```
+
+### Auto-Refresh on 401
+The API client automatically refreshes tokens on 401:
+```tsx
+async function handleResponse<T>(response: Response, retryFn?: () => Promise<T>): Promise<T> {
+  if (response.status === 401 && retryFn) {
+    const refreshed = await refreshAccessToken()
+    if (refreshed) return retryFn()
+    tokenStorage.clearTokens()
+  }
+  // ... handle response
+}
+```
+
+### Auth API Methods
+```tsx
+export const api = {
+  login: (credentials: LoginCredentials): Promise<TokenResponse> => ...,
+  register: (credentials: RegisterCredentials): Promise<TokenResponse> => ...,
+  getMe: (): Promise<AuthUser> => get(`${API_URL}/auth/me`),
+  logout: (): void => tokenStorage.clearTokens(),
+}
+```
+
+### AuthContext (`contexts/AuthContext.tsx`)
+```tsx
+interface AuthContextType {
+  user: AuthUser | null
+  isLoading: boolean
+  isAuthenticated: boolean
+  login: (credentials: LoginCredentials) => Promise<void>
+  register: (credentials: RegisterCredentials) => Promise<void>
+  logout: () => void
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Check existing token on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = tokenStorage.getAccessToken()
+      if (!token) { setIsLoading(false); return }
+      try {
+        const userData = await api.getMe()
+        setUser(userData)
+      } catch {
+        tokenStorage.clearTokens()
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
+
+  // ... login, register, logout methods
+}
+
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used within AuthProvider')
+  return context
+}
+```
+
+### ProtectedRoute (`components/shared/ProtectedRoute.tsx`)
+```tsx
+export function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth()
+  const location = useLocation()
+
+  if (isLoading) return <LoadingSpinner />
+
+  return isAuthenticated
+    ? <>{children}</>
+    : <Navigate to="/login" state={{ from: location }} replace />
+}
+```
+
+### Route Setup with Auth
+```tsx
+// App.tsx
+export function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          {/* Protected routes */}
+          <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+            <Route path="/" element={<FeedPage />} />
+            <Route path="/subscriptions" element={<SubscriptionsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  )
+}
+```
+
+### Using Auth in Components
+```tsx
+export default function FeedPage() {
+  const { user } = useAuth()
+
+  // user.id is available for any user-specific operations
+  const { items, isLoading } = useFeedQuery()
+  // ...
+}
+```
+
+### Login/Register Pages
+```tsx
+export default function LoginPage() {
+  const { login } = useAuth()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await login({ email, password })
+      // Redirect handled by ProtectedRoute
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+  // ... form JSX
+}
+```
+
+### Logout
+```tsx
+// In MainLayout or nav component
+const { logout } = useAuth()
+
+<button onClick={logout}>Logout</button>
+```
+
 ## Utility Functions
 
 ### Date/Time Formatting
@@ -345,22 +556,31 @@ import { clsx } from 'clsx'
 
 ## Routing
 
-### Route Setup
+### Route Setup with Authentication
 ```tsx
 // App.tsx
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { AuthProvider } from '@/contexts/AuthContext'
+import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
 
 export function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<FeedPage />} />
-          <Route path="/subscriptions" element={<SubscriptionsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes (login/register) */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          {/* Protected routes (require authentication) */}
+          <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+            <Route path="/" element={<FeedPage />} />
+            <Route path="/subscriptions" element={<SubscriptionsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 ```
@@ -392,10 +612,11 @@ Example: `is:liked source:hackernews rust`
 
 ## State Management
 
+- **Auth state**: AuthContext (user info, login/logout/register)
 - **Server state**: TanStack Query (caching, refetching, mutations)
 - **Local UI state**: React useState/useReducer
 - **Form state**: Controlled inputs with useState
-- **No Redux** - TanStack Query handles most needs
+- **No Redux** - AuthContext + TanStack Query handles most needs
 
 ## Code Style
 

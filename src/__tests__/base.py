@@ -13,7 +13,7 @@ from starlette.testclient import TestClient
 
 from main import app
 from repository.db import Base, get_db
-from schemas import SourceIn, SubscriptionOut, UserIn, UserOut
+from schemas import AuthUserOut, SourceIn, SubscriptionOut, UserIn, UserOut
 from service.factory import ServiceFactory
 
 # --- Test Database Setup ---
@@ -157,3 +157,33 @@ class BaseTestCase:
     def assert_bad_request(self, response, message_contains: str | None = None):
         """Assert 400 response."""
         self.assert_error_response(response, 400, message_contains)
+
+    def assert_unauthorized(self, response, message_contains: str | None = None):
+        """Assert 401 response."""
+        self.assert_error_response(response, 401, message_contains)
+
+    # --- Auth Helpers ---
+
+    def register_user(
+        self,
+        email: str = "test@example.com",
+        password: str = "password123",
+    ) -> tuple[AuthUserOut, str]:
+        """Register a user and return user info and access token."""
+        response = self.client.post("/auth/register", json={
+            "email": email,
+            "password": password,
+        })
+        assert response.status_code == 200, f"Failed to register: {response.json()}"
+        data = response.json()
+        access_token = data["access_token"]
+
+        me_response = self.client.get("/auth/me", headers={
+            "Authorization": f"Bearer {access_token}"
+        })
+        user = AuthUserOut(**me_response.json())
+        return user, access_token
+
+    def auth_headers(self, token: str) -> dict[str, str]:
+        """Return authorization headers for a token."""
+        return {"Authorization": f"Bearer {token}"}

@@ -69,7 +69,7 @@ class LLMService:
         results: dict[str, ProcessedContent] = {}
         uncached_items: list[tuple[int, ContentItem, str]] = []
 
-        for i, (item, h) in enumerate(zip(items, item_hashes)):
+        for i, (item, h) in enumerate(zip(items, item_hashes, strict=False)):
             if cached.get(h):
                 results[h] = ProcessedContent.from_dict(cached[h])
             else:
@@ -85,7 +85,7 @@ class LLMService:
 
             # Cache results
             to_cache = {}
-            for h, result in zip(uncached_hashes, processed):
+            for h, result in zip(uncached_hashes, processed, strict=False):
                 results[h] = result
                 to_cache[h] = result.to_dict()
 
@@ -174,7 +174,7 @@ class LLMService:
             uncached_embeddings = self._get_embeddings_batch(uncached_texts)
 
             # Fill in results and cache
-            for idx, emb in zip(uncached_indices, uncached_embeddings):
+            for idx, emb in zip(uncached_indices, uncached_embeddings, strict=False):
                 results[idx] = emb
                 h = content_hashes[idx]
                 self.cache.set_embedding(h, emb, self.config.cache_ttl_embedding)

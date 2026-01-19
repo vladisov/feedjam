@@ -61,6 +61,9 @@ Use domain exceptions instead of HTTPException in services:
 - `DuplicateEntityException(entity, field, value)` → 400
 - `ValidationException(message)` → 400
 - `ParserNotFoundException(source_type)` → 400
+- `AuthException(message)` → 401
+- `InvalidCredentialsException()` → 401
+- `InvalidTokenException()` → 401
 
 Exception handlers in main.py convert these to proper HTTP responses using a unified handler:
 
@@ -71,6 +74,9 @@ EXCEPTION_STATUS_CODES: dict[type[FeedJamException], int] = {
     DuplicateEntityException: 400,
     ValidationException: 400,
     ParserNotFoundException: 400,
+    AuthException: 401,
+    InvalidCredentialsException: 401,
+    InvalidTokenException: 401,
 }
 
 @app.exception_handler(FeedJamException)
@@ -81,6 +87,137 @@ async def feedjam_exception_handler(request: Request, exc: FeedJamException) -> 
         content=ErrorResponse(message=exc.message, details=exc.details).model_dump(),
     )
 ```
+
+## Authentication
+
+FeedJam uses JWT-based authentication with access and refresh tokens.
+
+### Overview
+- **Access tokens**: Short-lived (30 min), used for API requests
+- **Refresh tokens**: Long-lived (7 days), used to obtain new access tokens
+- **Password hashing**: bcrypt via passlib
+- **Token format**: JWT with HS256 algorithm
+
+### Auth Schemas (`schemas/auth.py`)
+```python
+class UserRegisterIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+class UserLoginIn(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+class TokenOut(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+class RefreshTokenIn(BaseModel):
+    refresh_token: str
+
+class AuthUserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    email: str
+    handle: str
+    is_active: bool
+    is_verified: bool
+    created_at: datetime
+```
+
+### Auth Service (`service/auth_service.py`)
+```python
+class AuthService:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """Hash password using bcrypt."""
+        return pwd_context.hash(password)
+
+    @staticmethod
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        """Verify password against hash."""
+        return pwd_context.verify(plain_password, hashed_password)
+
+    @staticmethod
+    def create_access_token(user_id: int) -> str:
+        """Create JWT access token (30 min expiry)."""
+        ...
+
+    @staticmethod
+    def create_refresh_token(user_id: int) -> str:
+        """Create JWT refresh token (7 day expiry)."""
+        ...
+
+    @staticmethod
+    def decode_token(token: str, token_type: str = "access") -> int:
+        """Decode token and return user_id. Raises InvalidTokenException on failure."""
+        ...
+
+    def register(self, data: UserRegisterIn) -> TokenOut:
+        """Register new user, return tokens."""
+        ...
+
+    def login(self, data: UserLoginIn) -> TokenOut:
+        """Authenticate user, return tokens."""
+        ...
+
+    def refresh_tokens(self, refresh_token: str) -> TokenOut:
+        """Refresh access token using valid refresh token."""
+        ...
+```
+
+### Auth Endpoints (`/auth`)
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/auth/register` | Register new user | No |
+| POST | `/auth/login` | Login, get tokens | No |
+| POST | `/auth/refresh` | Refresh access token | No (uses refresh token in body) |
+| GET | `/auth/me` | Get current user info | Yes |
+
+### Auth Dependency (`utils/dependencies.py`)
+```python
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+security = HTTPBearer()
+
+def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> int:
+    """Extract and validate user_id from JWT token."""
+    return AuthService.decode_token(credentials.credentials, token_type="access")
+```
+
+### Protecting Endpoints
+```python
+from utils.dependencies import get_current_user_id
+
+@router.get("/feed")
+def get_feed(
+    user_id: int = Depends(get_current_user_id),
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    return feed_service.get_user_feed(user_id)
+```
+
+### User Model Auth Fields
+```python
+class User(Base):
+    # ... existing fields
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+    hashed_password: Mapped[str | None] = mapped_column(String(255))
+    is_verified: Mapped[bool] = mapped_column(default=False)
+```
+
+### Security Best Practices
+- **Password requirements**: Minimum 8 characters, maximum 128
+- **JWT secret**: Must be set via `JWT_SECRET_KEY` env var in production
+- **Token types**: Access and refresh tokens have different `type` claims to prevent misuse
+- **Disabled accounts**: Login checks `is_active` flag
+- **No password in responses**: Passwords are never returned in API responses
 
 ## Dependency Injection
 
@@ -558,6 +695,9 @@ ENABLE_SUMMARIZATION = os.environ.get("ENABLE_SUMMARIZATION", "true").lower() ==
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | - |
 | `REDIS_URL` | Redis connection (for caching) | `redis://localhost:6379/0` |
+| `JWT_SECRET_KEY` | **Required in production**. Secret for JWT signing | Random (dev only) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime | `30` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime | `7` |
 | `OPEN_AI_KEY` | Default OpenAI API key | - |
 | `LLM_MODEL` | Model for completions | `gpt-4o-mini` |
 | `LLM_EMBEDDING_MODEL` | Model for embeddings | `text-embedding-3-small` |
@@ -610,6 +750,40 @@ user = self.create_user(handle="testuser")
 user = self.create_user_direct(handle="testuser")
 ```
 
+### Auth Test Helpers
+```python
+class BaseTestCase:
+    def register_user(
+        self,
+        email: str = "test@example.com",
+        password: str = "password123",
+    ) -> tuple[AuthUserOut, str]:
+        """Register a user and return user info and access token."""
+        response = self.client.post("/auth/register", json={
+            "email": email,
+            "password": password,
+        })
+        access_token = response.json()["access_token"]
+        me_response = self.client.get("/auth/me", headers={
+            "Authorization": f"Bearer {access_token}"
+        })
+        user = AuthUserOut(**me_response.json())
+        return user, access_token
+
+    def auth_headers(self, token: str) -> dict[str, str]:
+        """Return authorization headers for a token."""
+        return {"Authorization": f"Bearer {token}"}
+```
+
+Usage in tests:
+```python
+class TestProtectedEndpoint(BaseTestCase):
+    def test_feed_with_auth(self):
+        user, token = self.register_user()
+        response = self.client.get("/feed", headers=self.auth_headers(token))
+        assert response.status_code == 200
+```
+
 ### Running Tests
 ```bash
 # All tests
@@ -617,6 +791,9 @@ poetry run pytest
 
 # Specific file
 poetry run pytest src/__tests__/ranking_test.py -v
+
+# Auth tests only
+poetry run pytest src/__tests__/test_auth.py -v
 
 # With coverage
 poetry run pytest --cov=src

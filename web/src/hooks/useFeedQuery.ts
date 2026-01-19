@@ -6,19 +6,18 @@ const STALE_TIME = 2 * 60 * 1000 // 2 minutes
 const REFETCH_INTERVAL = 5 * 60 * 1000 // 5 minutes
 
 interface UseFeedQueryOptions {
-  userId: number
   enabled?: boolean
 }
 
-export function useFeedQuery({ userId, enabled = true }: UseFeedQueryOptions) {
+export function useFeedQuery({ enabled = true }: UseFeedQueryOptions = {}) {
   const {
     data: feed,
     isLoading,
     error,
     refetch,
   } = useQuery<UserFeed, Error>({
-    queryKey: ['feed', userId],
-    queryFn: () => api.getFeed(userId),
+    queryKey: ['feed'],
+    queryFn: () => api.getFeed(),
     staleTime: STALE_TIME,
     refetchOnWindowFocus: true,
     refetchInterval: REFETCH_INTERVAL,

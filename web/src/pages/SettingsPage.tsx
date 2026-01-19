@@ -6,8 +6,6 @@ import { api } from '@/lib/api'
 import type { UserInterest, UserInterestIn, UserSettingsIn } from '@/types/feed'
 import { toast } from 'sonner'
 
-const USER_ID = 1 // TODO: Get from auth context
-
 function getInitialTheme(): boolean {
   if (typeof window === 'undefined') return false
   const saved = localStorage.getItem('theme')
@@ -24,35 +22,35 @@ export default function SettingsPage() {
   const [apiKey, setApiKey] = useState('')
 
   const { data: interests = [], isLoading } = useQuery({
-    queryKey: ['interests', USER_ID],
-    queryFn: () => api.getInterests(USER_ID),
+    queryKey: ['interests'],
+    queryFn: () => api.getInterests(),
   })
 
   const { data: settings } = useQuery({
-    queryKey: ['settings', USER_ID],
-    queryFn: () => api.getSettings(USER_ID),
+    queryKey: ['settings'],
+    queryFn: () => api.getSettings(),
   })
 
   const addInterestMutation = useMutation({
-    mutationFn: (interest: UserInterestIn) => api.addInterest(USER_ID, interest),
+    mutationFn: (interest: UserInterestIn) => api.addInterest(interest),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['interests', USER_ID] })
+      queryClient.invalidateQueries({ queryKey: ['interests'] })
       setNewTopic('')
       setNewWeight(1.0)
     },
   })
 
   const deleteInterestMutation = useMutation({
-    mutationFn: (interestId: number) => api.deleteInterest(USER_ID, interestId),
+    mutationFn: (interestId: number) => api.deleteInterest(interestId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['interests', USER_ID] })
+      queryClient.invalidateQueries({ queryKey: ['interests'] })
     },
   })
 
   const updateSettingsMutation = useMutation({
-    mutationFn: (settingsIn: UserSettingsIn) => api.updateSettings(USER_ID, settingsIn),
+    mutationFn: (settingsIn: UserSettingsIn) => api.updateSettings(settingsIn),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['settings', USER_ID] })
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
       setApiKey('')
       toast.success('API key saved')
     },

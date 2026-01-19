@@ -11,9 +11,6 @@ import { cn } from '@/lib/utils'
 import { applySearch, parseSearchQuery, requiresServerSearch, toSearchParams } from '@/lib/search'
 import type { FeedItem, SearchResultItem } from '@/types/feed'
 
-// TODO: Make this configurable or remove when multi-user
-const DEFAULT_USER_ID = 1
-
 function useFeedItemMutation(
   mutationFn: (item: FeedItem) => Promise<unknown>
 ): (item: FeedItem) => void {
@@ -21,7 +18,7 @@ function useFeedItemMutation(
   const mutation = useMutation({
     mutationFn,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed', DEFAULT_USER_ID] })
+      queryClient.invalidateQueries({ queryKey: ['feed'] })
     },
   })
   return mutation.mutate
@@ -54,9 +51,7 @@ function toFeedItem(item: SearchResultItem): FeedItem {
 export default function FeedPage(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSummaries, setShowSummaries] = useState(getInitialShowSummaries)
-  const { items, isLoading, error, refetch } = useFeedQuery({
-    userId: DEFAULT_USER_ID,
-  })
+  const { items, isLoading, error, refetch } = useFeedQuery()
 
   const queryClient = useQueryClient()
 
@@ -67,38 +62,38 @@ export default function FeedPage(): React.ReactElement {
 
   // Server-side search (only enabled when state filters are used)
   const serverSearch = useQuery({
-    queryKey: ['search', DEFAULT_USER_ID, searchParams],
-    queryFn: () => api.searchItems(DEFAULT_USER_ID, searchParams),
+    queryKey: ['search', searchParams],
+    queryFn: () => api.searchItems(searchParams),
     enabled: needsServerSearch,
   })
 
   const handleToggleLike = useFeedItemMutation((item) =>
-    api.toggleLike(DEFAULT_USER_ID, item.id)
+    api.toggleLike(item.id)
   )
   const handleToggleDislike = useFeedItemMutation((item) =>
-    api.toggleDislike(DEFAULT_USER_ID, item.id)
+    api.toggleDislike(item.id)
   )
   const handleToggleStar = useFeedItemMutation((item) =>
-    api.toggleStar(DEFAULT_USER_ID, item.id)
+    api.toggleStar(item.id)
   )
   const handleMarkRead = useFeedItemMutation((item) =>
-    api.markRead(DEFAULT_USER_ID, item.id)
+    api.markRead(item.id)
   )
   const handleToggleHide = useFeedItemMutation((item) =>
-    api.toggleHide(DEFAULT_USER_ID, item.id)
+    api.toggleHide(item.id)
   )
 
   const hideReadMutation = useMutation({
-    mutationFn: () => api.hideRead(DEFAULT_USER_ID),
+    mutationFn: () => api.hideRead(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed', DEFAULT_USER_ID] })
+      queryClient.invalidateQueries({ queryKey: ['feed'] })
     },
   })
 
   const markAllReadMutation = useMutation({
-    mutationFn: () => api.markAllRead(DEFAULT_USER_ID),
+    mutationFn: () => api.markAllRead(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed', DEFAULT_USER_ID] })
+      queryClient.invalidateQueries({ queryKey: ['feed'] })
     },
   })
 

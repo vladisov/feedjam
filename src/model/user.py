@@ -14,5 +14,10 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
+    # Auth fields
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_verified: Mapped[bool] = mapped_column(default=False)
+
     # User-provided API keys (optional, overrides system defaults)
     openai_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)

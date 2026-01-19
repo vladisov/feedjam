@@ -7,11 +7,68 @@ import type {
   UserSettingsIn,
   SearchResultItem,
   SearchParams,
+  AuthUser,
+  TokenResponse,
+  LoginCredentials,
+  RegisterCredentials,
 } from '@/types/feed'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
-async function handleResponse<T>(response: Response): Promise<T> {
+// Token storage keys
+const ACCESS_TOKEN_KEY = 'feedjam_access_token'
+const REFRESH_TOKEN_KEY = 'feedjam_refresh_token'
+
+// Token management
+export const tokenStorage = {
+  getAccessToken: (): string | null => localStorage.getItem(ACCESS_TOKEN_KEY),
+  getRefreshToken: (): string | null => localStorage.getItem(REFRESH_TOKEN_KEY),
+  setTokens: (access: string, refresh: string): void => {
+    localStorage.setItem(ACCESS_TOKEN_KEY, access)
+    localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
+  },
+  clearTokens: (): void => {
+    localStorage.removeItem(ACCESS_TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+  },
+}
+
+// Build headers with auth token
+function getAuthHeaders(): HeadersInit {
+  const token = tokenStorage.getAccessToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+// Auth error event - AuthContext listens for this to trigger logout
+export const AUTH_ERROR_EVENT = 'feedjam:auth_error'
+
+function dispatchAuthError() {
+  window.dispatchEvent(new CustomEvent(AUTH_ERROR_EVENT))
+}
+
+// Handle response with auto-refresh on 401
+async function handleResponse<T>(response: Response, retryFn?: () => Promise<T>): Promise<T> {
+  // 403 = no token (HTTPBearer returns this when header missing)
+  if (response.status === 403 && retryFn) {
+    // No token present, trigger auth error immediately
+    tokenStorage.clearTokens()
+    dispatchAuthError()
+    throw new Error('Please log in to continue.')
+  }
+
+  // 401 = invalid/expired token
+  if (response.status === 401 && retryFn) {
+    // Try to refresh token
+    const refreshed = await refreshAccessToken()
+    if (refreshed) {
+      return retryFn()
+    }
+    // Refresh failed, clear tokens and notify AuthContext
+    tokenStorage.clearTokens()
+    dispatchAuthError()
+    throw new Error('Session expired. Please log in again.')
+  }
+
   if (!response.ok) {
     const errorText = await response.text()
     throw new Error(errorText || `HTTP error ${response.status}`)
@@ -19,61 +76,138 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json()
 }
 
+// Refresh access token using refresh token
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = tokenStorage.getRefreshToken()
+  if (!refreshToken) return false
+
+  try {
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+
+    if (!response.ok) return false
+
+    const data: TokenResponse = await response.json()
+    tokenStorage.setTokens(data.access_token, data.refresh_token)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function post<T>(url: string): Promise<T> {
-  return fetch(url, { method: 'POST' }).then((res) => handleResponse<T>(res))
+  const doFetch = () =>
+    fetch(url, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    }).then((res) => handleResponse<T>(res, doFetch))
+  return doFetch()
 }
 
 function postJson<T>(url: string, body: unknown): Promise<T> {
-  return fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).then((res) => handleResponse<T>(res))
+  const doFetch = () =>
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(body),
+    }).then((res) => handleResponse<T>(res, doFetch))
+  return doFetch()
 }
 
 function putJson<T>(url: string, body: unknown): Promise<T> {
-  return fetch(url, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).then((res) => handleResponse<T>(res))
+  const doFetch = () =>
+    fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(body),
+    }).then((res) => handleResponse<T>(res, doFetch))
+  return doFetch()
 }
 
 function del<T>(url: string): Promise<T> {
-  return fetch(url, { method: 'DELETE' }).then((res) => handleResponse<T>(res))
+  const doFetch = () =>
+    fetch(url, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    }).then((res) => handleResponse<T>(res, doFetch))
+  return doFetch()
 }
 
 function get<T>(url: string): Promise<T> {
-  return fetch(url).then((res) => handleResponse<T>(res))
+  const doFetch = () =>
+    fetch(url, {
+      headers: getAuthHeaders(),
+    }).then((res) => handleResponse<T>(res, doFetch))
+  return doFetch()
+}
+
+async function authRequest(
+  endpoint: string,
+  body: LoginCredentials | RegisterCredentials,
+  fallbackError: string
+): Promise<TokenResponse> {
+  const response = await fetch(`${API_URL}/auth/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    // Try to parse JSON error from backend
+    try {
+      const errorData = await response.json()
+      throw new Error(errorData.message || fallbackError)
+    } catch {
+      throw new Error(fallbackError)
+    }
+  }
+  const data: TokenResponse = await response.json()
+  tokenStorage.setTokens(data.access_token, data.refresh_token)
+  return data
 }
 
 export const api = {
-  // Feed
-  getFeed: (userId: number): Promise<UserFeed> =>
-    get(`${API_URL}/feed/${userId}`),
+  login: (credentials: LoginCredentials): Promise<TokenResponse> =>
+    authRequest('login', credentials, 'Login failed'),
 
-  markRead: (userId: number, itemId: number): Promise<void> =>
-    post(`${API_URL}/feed/${userId}/mark-read/${itemId}`),
+  register: (credentials: RegisterCredentials): Promise<TokenResponse> =>
+    authRequest('register', credentials, 'Registration failed'),
 
-  toggleLike: (userId: number, itemId: number): Promise<{ liked: boolean }> =>
-    post(`${API_URL}/feed/${userId}/items/${itemId}/like`),
+  getMe: (): Promise<AuthUser> =>
+    get(`${API_URL}/auth/me`),
 
-  toggleDislike: (userId: number, itemId: number): Promise<{ disliked: boolean }> =>
-    post(`${API_URL}/feed/${userId}/items/${itemId}/dislike`),
+  logout: (): void => {
+    tokenStorage.clearTokens()
+  },
 
-  toggleStar: (userId: number, itemId: number): Promise<{ starred: boolean }> =>
-    post(`${API_URL}/feed/${userId}/items/${itemId}/star`),
+  // Feed (authenticated - no userId needed)
+  getFeed: (): Promise<UserFeed> =>
+    get(`${API_URL}/feed`),
 
-  toggleHide: (userId: number, itemId: number): Promise<{ hidden: boolean }> =>
-    post(`${API_URL}/feed/${userId}/items/${itemId}/hide`),
+  markRead: (itemId: number): Promise<void> =>
+    post(`${API_URL}/feed/mark-read/${itemId}`),
 
-  hideRead: (userId: number): Promise<{ hidden_count: number }> =>
-    post(`${API_URL}/feed/${userId}/hide-read`),
+  toggleLike: (itemId: number): Promise<{ liked: boolean }> =>
+    post(`${API_URL}/feed/items/${itemId}/like`),
 
-  markAllRead: (userId: number): Promise<{ read_count: number }> =>
-    post(`${API_URL}/feed/${userId}/mark-all-read`),
+  toggleDislike: (itemId: number): Promise<{ disliked: boolean }> =>
+    post(`${API_URL}/feed/items/${itemId}/dislike`),
 
-  searchItems: (userId: number, params: SearchParams): Promise<SearchResultItem[]> => {
+  toggleStar: (itemId: number): Promise<{ starred: boolean }> =>
+    post(`${API_URL}/feed/items/${itemId}/star`),
+
+  toggleHide: (itemId: number): Promise<{ hidden: boolean }> =>
+    post(`${API_URL}/feed/items/${itemId}/hide`),
+
+  hideRead: (): Promise<{ hidden_count: number }> =>
+    post(`${API_URL}/feed/hide-read`),
+
+  markAllRead: (): Promise<{ read_count: number }> =>
+    post(`${API_URL}/feed/mark-all-read`),
+
+  searchItems: (params: SearchParams): Promise<SearchResultItem[]> => {
     const searchParams = new URLSearchParams()
     if (params.liked !== undefined) searchParams.set('liked', String(params.liked))
     if (params.disliked !== undefined) searchParams.set('disliked', String(params.disliked))
@@ -84,36 +218,36 @@ export const api = {
     if (params.source) searchParams.set('source', params.source)
     if (params.limit) searchParams.set('limit', String(params.limit))
     if (params.offset) searchParams.set('offset', String(params.offset))
-    return get(`${API_URL}/feed/${userId}/search?${searchParams.toString()}`)
+    return get(`${API_URL}/feed/search?${searchParams.toString()}`)
   },
 
-  // Subscriptions
-  getSubscriptions: (userId: number): Promise<Subscription[]> =>
-    get(`${API_URL}/subscriptions?user_id=${userId}`),
+  // Subscriptions (authenticated)
+  getSubscriptions: (): Promise<Subscription[]> =>
+    get(`${API_URL}/subscriptions`),
 
-  addSubscription: (resourceUrl: string, userId: number): Promise<Subscription> =>
-    postJson(`${API_URL}/subscriptions`, { resource_url: resourceUrl, user_id: userId }),
+  addSubscription: (resourceUrl: string): Promise<Subscription> =>
+    postJson(`${API_URL}/subscriptions`, { resource_url: resourceUrl }),
 
   deleteSubscription: (subscriptionId: number): Promise<void> =>
     del(`${API_URL}/subscriptions/${subscriptionId}`),
 
-  // Interests
-  getInterests: (userId: number): Promise<UserInterest[]> =>
-    get(`${API_URL}/users/${userId}/interests`),
+  // Interests (authenticated via /users/me)
+  getInterests: (): Promise<UserInterest[]> =>
+    get(`${API_URL}/users/me/interests`),
 
-  replaceInterests: (userId: number, interests: UserInterestIn[]): Promise<UserInterest[]> =>
-    putJson(`${API_URL}/users/${userId}/interests`, { interests }),
+  replaceInterests: (interests: UserInterestIn[]): Promise<UserInterest[]> =>
+    putJson(`${API_URL}/users/me/interests`, { interests }),
 
-  addInterest: (userId: number, interest: UserInterestIn): Promise<UserInterest> =>
-    postJson(`${API_URL}/users/${userId}/interests`, interest),
+  addInterest: (interest: UserInterestIn): Promise<UserInterest> =>
+    postJson(`${API_URL}/users/me/interests`, interest),
 
-  deleteInterest: (userId: number, interestId: number): Promise<void> =>
-    del(`${API_URL}/users/${userId}/interests/${interestId}`),
+  deleteInterest: (interestId: number): Promise<void> =>
+    del(`${API_URL}/users/me/interests/${interestId}`),
 
-  // Settings
-  getSettings: (userId: number): Promise<UserSettings> =>
-    get(`${API_URL}/users/${userId}/settings`),
+  // Settings (authenticated via /users/me)
+  getSettings: (): Promise<UserSettings> =>
+    get(`${API_URL}/users/me/settings`),
 
-  updateSettings: (userId: number, settings: UserSettingsIn): Promise<UserSettings> =>
-    putJson(`${API_URL}/users/${userId}/settings`, settings),
+  updateSettings: (settings: UserSettingsIn): Promise<UserSettings> =>
+    putJson(`${API_URL}/users/me/settings`, settings),
 }

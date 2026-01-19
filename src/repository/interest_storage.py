@@ -1,6 +1,6 @@
 """User interest repository."""
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from model.user_interest import UserInterest

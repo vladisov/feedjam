@@ -3,7 +3,6 @@
 from __tests__.base import BaseTestCase
 from schemas import UserInterestIn
 from schemas.feeds import ItemState, UserFeedItemIn
-from service.ranking_service import RankingService
 
 
 class TestRankingService(BaseTestCase):

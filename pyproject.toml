@@ -40,6 +40,12 @@ python-dotenv = "^1.0.1"
 python-dateutil = "^2.9.0"
 requests = "^2.32.5"
 
+# Auth
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+bcrypt = "^4.0.0"
+email-validator = "^2.1.0"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
 pytest-asyncio = "^0.24.0"

@@ -5,44 +5,36 @@ from unittest.mock import patch
 import feedparser
 
 from __tests__.base import BaseTestCase
-from schemas import SubscriptionIn, SubscriptionOut
+from schemas import SourceIn, SubscriptionOut
 
 
 class TestFeedService(BaseTestCase):
     """Test feed service functionality."""
 
-    def _create_subscription_via_api(
-        self, resource_url: str = "https://hnrss.org/best", user_id: int = 1
-    ) -> SubscriptionOut:
-        """Create a subscription via API."""
-        subscription = SubscriptionIn(resource_url=resource_url, user_id=user_id)
-        response = self.client.post("/subscriptions/", json=subscription.model_dump())
-        return SubscriptionOut(**response.json())
+    def _create_user_and_subscription(self, user_id: int = 1) -> SubscriptionOut:
+        """Create a user and subscription for testing."""
+        self.create_user_direct(f"user{user_id}")
+        source = self.source_storage.create(
+            SourceIn(name="HN Best", resource_url="https://hnrss.org/best")
+        )
+        return self.subscription_storage.create(user_id, source.id)
 
-    def _create_hn_feed_items(
+    def _fetch_items_from_file(
         self,
-        user_id: int = 1,
+        subscription: SubscriptionOut,
         filename: str = "src/__tests__/test_data/hn_best_example.xml",
     ):
-        """Create feed items from test data."""
-        # Create user first
-        self.create_user_direct(f"user{user_id}")
-
-        # Create subscription
-        subscription = self._create_subscription_via_api(user_id=user_id)
-
-        # Load test data
+        """Fetch items from test data file for a subscription."""
         with open(filename, encoding="utf-8") as file:
-            hn_feed_data = file.read()
+            feed_data = file.read()
 
-        # Mock feedparser to return test data
-        with patch.object(feedparser, "parse", return_value=feedparser.parse(hn_feed_data)):
-            items = self.feed_service.fetch_and_save_items(subscription.id)
-            return items, subscription
+        with patch.object(feedparser, "parse", return_value=feedparser.parse(feed_data)):
+            return self.feed_service.fetch_and_save_items(subscription.id)
 
     def test_fetch_feed(self):
         """Test fetching and saving feed items."""
-        items, _ = self._create_hn_feed_items()
+        subscription = self._create_user_and_subscription()
+        self._fetch_items_from_file(subscription)
 
         feed_items = self.feed_service.get_items(1, 0, 100)
         assert len(feed_items) == 30
@@ -52,8 +44,9 @@ class TestFeedService(BaseTestCase):
     def test_generate_and_save_user_feed(self):
         """Test generating user feed from feed items."""
         user_id = 1
-        _, _ = self._create_hn_feed_items(
-            user_id, filename="src/__tests__/test_data/hn_best_example_short.xml"
+        subscription = self._create_user_and_subscription(user_id)
+        self._fetch_items_from_file(
+            subscription, filename="src/__tests__/test_data/hn_best_example_short.xml"
         )
         feed_items = self.feed_service.get_items(user_id, 0, 100)
 
@@ -80,15 +73,18 @@ class TestFeedService(BaseTestCase):
         """Test that regenerating feed preserves unread items."""
         user_id = 1
 
-        # Create initial feed
-        _, _ = self._create_hn_feed_items(
-            user_id, filename="src/__tests__/test_data/hn_best_example_short.xml"
+        # Create user and subscription
+        subscription = self._create_user_and_subscription(user_id)
+
+        # Create initial feed with short xml
+        self._fetch_items_from_file(
+            subscription, filename="src/__tests__/test_data/hn_best_example_short.xml"
         )
         self.feed_service.generate_user_feed(user_id)
 
-        # Add more items
-        _, _ = self._create_hn_feed_items(
-            user_id, filename="src/__tests__/test_data/hn_best_example.xml"
+        # Add more items with full xml
+        self._fetch_items_from_file(
+            subscription, filename="src/__tests__/test_data/hn_best_example.xml"
         )
         feed_items = self.feed_service.get_items(user_id, 0, 100)
 

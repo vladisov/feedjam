@@ -1,7 +1,6 @@
 """Ranking service for personalized feed scoring."""
 
 import math
-from datetime import datetime, timezone
 
 from repository.interest_storage import InterestStorage
 from repository.like_history_storage import LikeHistoryStorage

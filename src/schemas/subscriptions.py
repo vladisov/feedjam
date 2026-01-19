@@ -6,9 +6,15 @@ from pydantic import BaseModel, ConfigDict
 
 
 class SubscriptionIn(BaseModel):
-    """Input schema for creating a subscription."""
+    """Input schema for creating a subscription (internal use with user_id)."""
 
     user_id: int
+    resource_url: str
+
+
+class SubscriptionCreateIn(BaseModel):
+    """Input schema for creating a subscription (API use without user_id)."""
+
     resource_url: str
 
 

@@ -6,6 +6,7 @@ Naming convention:
 - XxxUpdate: Partial update schema
 """
 
+from .auth import AuthUserOut, RefreshTokenIn, TokenOut, UserLoginIn, UserRegisterIn
 from .feeds import (
     FeedItemIn,
     FeedItemOut,
@@ -21,6 +22,12 @@ from .subscriptions import SubscriptionIn, SubscriptionOut, SubscriptionUpdate
 from .users import UserIn, UserOut, UserSettingsIn, UserSettingsOut
 
 __all__ = [
+    # Auth
+    "UserRegisterIn",
+    "UserLoginIn",
+    "TokenOut",
+    "RefreshTokenIn",
+    "AuthUserOut",
     # Users
     "UserIn",
     "UserOut",
