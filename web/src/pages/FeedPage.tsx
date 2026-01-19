@@ -5,11 +5,35 @@ import { FeedList } from '@/components/feed/FeedList'
 import { SearchBar } from '@/components/feed/SearchBar'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
-import { ArrowPathIcon, Bars3BottomLeftIcon, EyeSlashIcon, CheckIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, Bars3BottomLeftIcon, EyeSlashIcon, CheckIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { applySearch, parseSearchQuery, requiresServerSearch, toSearchParams } from '@/lib/search'
 import type { FeedItem, SearchResultItem } from '@/types/feed'
+
+type FeedTab = 'all' | 'digest'
+
+interface TabButtonProps {
+  isActive: boolean
+  onClick: () => void
+  children: React.ReactNode
+}
+
+function TabButton({ isActive, onClick, children }: TabButtonProps): React.ReactElement {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors',
+        isActive
+          ? 'border-b-2 border-primary text-foreground'
+          : 'text-muted-foreground hover:text-foreground'
+      )}
+    >
+      {children}
+    </button>
+  )
+}
 
 function useFeedItemMutation(
   mutationFn: (item: FeedItem) => Promise<unknown>
@@ -51,9 +75,17 @@ function toFeedItem(item: SearchResultItem): FeedItem {
 export default function FeedPage(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSummaries, setShowSummaries] = useState(getInitialShowSummaries)
+  const [activeTab, setActiveTab] = useState<FeedTab>('all')
   const { items, isLoading, error, refetch } = useFeedQuery()
 
   const queryClient = useQueryClient()
+
+  // Digest query
+  const digestQuery = useQuery({
+    queryKey: ['digest'],
+    queryFn: () => api.getDigest(),
+    enabled: activeTab === 'digest',
+  })
 
   // Parse search query to check if server search is needed
   const parsedSearch = useMemo(() => parseSearchQuery(searchQuery), [searchQuery])
@@ -97,13 +129,16 @@ export default function FeedPage(): React.ReactElement {
     },
   })
 
-  // Get filtered items: server search results or client-side filtered
+  // Get filtered items based on active tab
   const filteredItems = useMemo(() => {
+    if (activeTab === 'digest') {
+      return digestQuery.data ?? []
+    }
     if (needsServerSearch) {
       return (serverSearch.data ?? []).map(toFeedItem)
     }
     return applySearch(items, searchQuery)
-  }, [needsServerSearch, serverSearch.data, items, searchQuery])
+  }, [activeTab, digestQuery.data, needsServerSearch, serverSearch.data, items, searchQuery])
 
   // Counts for action buttons (based on visible non-hidden items)
   const { readCount, unreadCount } = useMemo(() => {
@@ -121,8 +156,9 @@ export default function FeedPage(): React.ReactElement {
   }
 
   const isSearching = needsServerSearch && serverSearch.isLoading
+  const isLoadingDigest = activeTab === 'digest' && digestQuery.isLoading
 
-  if ((isLoading && items.length === 0) || isSearching) {
+  if ((isLoading && items.length === 0) || isSearching || isLoadingDigest) {
     return <PageLoader />
   }
 
@@ -143,13 +179,17 @@ export default function FeedPage(): React.ReactElement {
       {/* Page header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Your Feed</h2>
+          <h2 className="text-2xl font-bold text-foreground">
+            {activeTab === 'digest' ? "Today's Digest" : 'Your Feed'}
+          </h2>
           <p className="text-sm text-muted-foreground">
-            {filteredItems.length} items
+            {activeTab === 'digest'
+              ? 'Top 5 items from the last 24 hours'
+              : `${filteredItems.length} items`}
           </p>
         </div>
         <div className="flex items-center gap-1">
-          {unreadCount > 0 && (
+          {activeTab === 'all' && unreadCount > 0 && (
             <Button
               onClick={() => markAllReadMutation.mutate()}
               variant="ghost"
@@ -162,7 +202,7 @@ export default function FeedPage(): React.ReactElement {
               Mark all read
             </Button>
           )}
-          {readCount > 0 && (
+          {activeTab === 'all' && readCount > 0 && (
             <Button
               onClick={() => hideReadMutation.mutate()}
               variant="ghost"
@@ -196,10 +236,23 @@ export default function FeedPage(): React.ReactElement {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-4">
-        <SearchBar value={searchQuery} onChange={setSearchQuery} />
+      {/* Tabs */}
+      <div className="mb-4 flex gap-1 border-b border-border">
+        <TabButton isActive={activeTab === 'all'} onClick={() => setActiveTab('all')}>
+          All
+        </TabButton>
+        <TabButton isActive={activeTab === 'digest'} onClick={() => setActiveTab('digest')}>
+          <SparklesIcon className="h-4 w-4" />
+          Digest
+        </TabButton>
       </div>
+
+      {/* Search (only show for All tab) */}
+      {activeTab === 'all' && (
+        <div className="mb-4">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        </div>
+      )}
 
       {/* Feed list */}
       <FeedList

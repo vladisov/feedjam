@@ -9,7 +9,7 @@ Articles:
 
 For each article, provide:
 - title: A cleaned, concise title (max 80 characters). If the original title is already short and clear, return null. Otherwise, shorten and improve readability while preserving the key meaning.
-- summary: A concise 1-2 sentence summary (MAX 250 characters). Focus on the key insight or news. Be direct, no filler phrases like "This article discusses...".
+- summary: A concise 2-3 sentence summary (MAX 350 characters). Focus on the key insight or news. Be direct, no filler phrases like "This article discusses...". For social media posts (Telegram, Twitter), summarize the full post content.
 - topics: 3-5 keyword topics for categorization (lowercase, single words or hyphenated phrases)
 - quality: A score from 0.0 to 1.0 based on:
   - Informativeness: Does it provide real value/information?
@@ -33,8 +33,8 @@ def format_items_for_processing(items: list) -> str:
     for i, item in enumerate(items, 1):
         text = f"[{i}] Title: {item.title}"
         if item.content:
-            # Truncate content to avoid token limits
-            content = item.content[:1500] + "..." if len(item.content) > 1500 else item.content
+            # Truncate content to avoid token limits (2500 chars to capture full social posts)
+            content = item.content[:2500] + "..." if len(item.content) > 2500 else item.content
             text += f"\nContent: {content}"
         formatted.append(text)
     return "\n\n".join(formatted)

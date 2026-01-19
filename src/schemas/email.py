@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class InboundEmailPayload(BaseModel):
@@ -27,8 +27,6 @@ class InboundEmailResponse(BaseModel):
 
 class InboxAddressOut(BaseModel):
     """Output schema for user's inbox address."""
-
-    model_config = ConfigDict(from_attributes=True)
 
     inbox_address: str
     email_token: str

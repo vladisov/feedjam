@@ -65,7 +65,7 @@ export function FeedCard({
   onToggleDislike,
   onMarkRead,
   onToggleHide,
-}: FeedCardProps) {
+}: FeedCardProps): React.ReactElement {
   const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked } = item.state
 
   const handleArticleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -106,7 +106,8 @@ export function FeedCard({
             <ArrowTopRightOnSquareIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/link:opacity-100" />
           </a>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {item.source_name} &middot; {formatRelativeTime(item.created_at)}
+            {item.source_name}
+            {item.created_at && <> &middot; {formatRelativeTime(item.created_at)}</>}
           </p>
         </div>
 
@@ -147,7 +148,7 @@ export function FeedCard({
 
       {showSummary && item.summary && (
         <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-          {truncate(item.summary, 250)}
+          {truncate(item.summary, 400)}
         </p>
       )}
 

@@ -301,4 +301,5 @@ class FeedService:
             points=item.points,
             views=item.views,
             summary=item.summary,
+            created_at=item.created_at,
         )

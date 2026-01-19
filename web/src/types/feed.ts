@@ -11,17 +11,21 @@ export interface FeedItem {
   views: number | null
   rank_score: number
   state: FeedItemState
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
 }
 
-export interface FeedItemState {
-  id: number
+/** Base state flags shared across feed items */
+export interface ItemStateFlags {
   read: boolean
   star: boolean
   like: boolean
   dislike: boolean
   hide: boolean
+}
+
+export interface FeedItemState extends ItemStateFlags {
+  id: number
 }
 
 export interface UserFeed {
@@ -66,13 +70,13 @@ export interface UserSettingsIn {
   openai_api_key?: string | null
 }
 
-export interface SearchResultState {
-  read: boolean
-  like: boolean
-  dislike: boolean
-  star: boolean
-  hide: boolean
+export interface InboxAddress {
+  inbox_address: string
+  email_token: string
 }
+
+/** Search results use the base state flags (no id) */
+export type SearchResultState = ItemStateFlags
 
 export interface SearchResultItem {
   id: number
@@ -90,6 +94,23 @@ export interface SearchResultItem {
   created_at: string
   updated_at: string
   state: SearchResultState
+}
+
+/** API response shape for digest items */
+export interface DigestItem {
+  feed_item_id: number
+  user_id: number
+  title: string
+  source_name: string
+  state: ItemStateFlags
+  description: string
+  article_url: string | null
+  comments_url: string | null
+  points: number | null
+  views: number | null
+  summary: string | null
+  rank_score: number
+  created_at: string | null
 }
 
 export interface SearchParams {

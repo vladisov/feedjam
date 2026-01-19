@@ -111,6 +111,10 @@ class ContentProcessor:
         """Determine if we should fetch the full article."""
         source = item.source_name.lower()
 
+        # Social media - never fetch, use post content directly
+        if any(s in source for s in ['telegram', 'twitter']):
+            return False
+
         # Link aggregators - always fetch the actual article
         if any(s in source for s in ['hackernews', 'reddit', 'lobsters']):
             return bool(item.article_url)

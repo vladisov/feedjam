@@ -1,84 +1,129 @@
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/shared/Button'
-import { SunIcon, MoonIcon, PlusIcon, XMarkIcon, CheckIcon, KeyIcon } from '@heroicons/react/24/outline'
-import { api } from '@/lib/api'
-import type { UserInterest, UserInterestIn, UserSettingsIn } from '@/types/feed'
-import { toast } from 'sonner'
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/shared/Button";
+import {
+  SunIcon,
+  MoonIcon,
+  PlusIcon,
+  XMarkIcon,
+  CheckIcon,
+  KeyIcon,
+  ClipboardIcon,
+  ArrowPathIcon,
+  EnvelopeIcon,
+} from "@heroicons/react/24/outline";
+import { api } from "@/lib/api";
+import type {
+  UserInterest,
+  UserInterestIn,
+  UserSettingsIn,
+} from "@/types/feed";
+import { toast } from "sonner";
 
 function getInitialTheme(): boolean {
-  if (typeof window === 'undefined') return false
-  const saved = localStorage.getItem('theme')
-  if (saved === 'dark') return true
-  if (saved === 'light') return false
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
+  if (typeof window === "undefined") return false;
+  const saved = localStorage.getItem("theme");
+  if (saved === "dark") return true;
+  if (saved === "light") return false;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
 export default function SettingsPage() {
-  const queryClient = useQueryClient()
-  const [isDark, setIsDark] = useState(getInitialTheme)
-  const [newTopic, setNewTopic] = useState('')
-  const [newWeight, setNewWeight] = useState(1.0)
-  const [apiKey, setApiKey] = useState('')
+  const queryClient = useQueryClient();
+  const [isDark, setIsDark] = useState(getInitialTheme);
+  const [newTopic, setNewTopic] = useState("");
+  const [newWeight, setNewWeight] = useState(1.0);
+  const [apiKey, setApiKey] = useState("");
 
   const { data: interests = [], isLoading } = useQuery({
-    queryKey: ['interests'],
+    queryKey: ["interests"],
     queryFn: () => api.getInterests(),
-  })
+  });
 
   const { data: settings } = useQuery({
-    queryKey: ['settings'],
+    queryKey: ["settings"],
     queryFn: () => api.getSettings(),
-  })
+  });
+
+  const { data: inbox } = useQuery({
+    queryKey: ["inbox"],
+    queryFn: () => api.getInbox(),
+  });
 
   const addInterestMutation = useMutation({
     mutationFn: (interest: UserInterestIn) => api.addInterest(interest),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['interests'] })
-      setNewTopic('')
-      setNewWeight(1.0)
+      queryClient.invalidateQueries({ queryKey: ["interests"] });
+      setNewTopic("");
+      setNewWeight(1.0);
     },
-  })
+  });
 
   const deleteInterestMutation = useMutation({
     mutationFn: (interestId: number) => api.deleteInterest(interestId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['interests'] })
+      queryClient.invalidateQueries({ queryKey: ["interests"] });
     },
-  })
+  });
 
   const updateSettingsMutation = useMutation({
     mutationFn: (settingsIn: UserSettingsIn) => api.updateSettings(settingsIn),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['settings'] })
-      setApiKey('')
-      toast.success('API key saved')
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      setApiKey("");
+      toast.success("API key saved");
     },
     onError: () => {
-      toast.error('Failed to save API key')
+      toast.error("Failed to save API key");
     },
-  })
+  });
+
+  const regenerateInboxMutation = useMutation({
+    mutationFn: () => api.regenerateInbox(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      toast.success("Inbox address regenerated");
+    },
+    onError: () => {
+      toast.error("Failed to regenerate inbox address");
+    },
+  });
 
   const handleAddInterest = (e: React.FormEvent): void => {
-    e.preventDefault()
+    e.preventDefault();
     if (newTopic.trim()) {
-      addInterestMutation.mutate({ topic: newTopic.trim(), weight: newWeight })
+      addInterestMutation.mutate({ topic: newTopic.trim(), weight: newWeight });
     }
-  }
+  };
 
   const handleSaveApiKey = (e: React.FormEvent): void => {
-    e.preventDefault()
-    updateSettingsMutation.mutate({ openai_api_key: apiKey || null })
-  }
+    e.preventDefault();
+    updateSettingsMutation.mutate({ openai_api_key: apiKey || null });
+  };
 
   const handleRemoveApiKey = (): void => {
-    updateSettingsMutation.mutate({ openai_api_key: '' })
-  }
+    updateSettingsMutation.mutate({ openai_api_key: "" });
+  };
+
+  const handleCopyInbox = (): void => {
+    if (!inbox?.inbox_address) return;
+
+    navigator.clipboard
+      .writeText(inbox.inbox_address)
+      .then(() => toast.success("Copied to clipboard"))
+      .catch(() => toast.error("Failed to copy to clipboard"));
+  };
+
+  const handleRegenerateInbox = (): void => {
+    if (confirm("Are you sure? The old address will stop working.")) {
+      regenerateInboxMutation.mutate();
+    }
+  };
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark)
-    localStorage.setItem('theme', isDark ? 'dark' : 'light')
-  }, [isDark])
+    document.documentElement.classList.toggle("dark", isDark);
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+  }, [isDark]);
 
   return (
     <div>
@@ -94,9 +139,12 @@ export default function SettingsPage() {
       <div className="space-y-6">
         {/* Interests */}
         <section className="rounded-lg border border-border bg-card p-6">
-          <h3 className="mb-4 text-lg font-medium text-foreground">Interests</h3>
+          <h3 className="mb-4 text-lg font-medium text-foreground">
+            Interests
+          </h3>
           <p className="mb-4 text-sm text-muted-foreground">
-            Add topics you're interested in. Stories matching these topics will rank higher in your feed.
+            Add topics you're interested in. Stories matching these topics will
+            rank higher in your feed.
           </p>
 
           {/* Add interest form */}
@@ -130,9 +178,13 @@ export default function SettingsPage() {
 
           {/* Interest list */}
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading interests...</p>
+            <p className="text-sm text-muted-foreground">
+              Loading interests...
+            </p>
           ) : interests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No interests added yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No interests added yet.
+            </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {interests.map((interest: UserInterest) => (
@@ -140,8 +192,12 @@ export default function SettingsPage() {
                   key={interest.id}
                   className="flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1"
                 >
-                  <span className="text-sm text-foreground">{interest.topic}</span>
-                  <span className="text-xs text-muted-foreground">({interest.weight}x)</span>
+                  <span className="text-sm text-foreground">
+                    {interest.topic}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    ({interest.weight}x)
+                  </span>
                   <button
                     onClick={() => deleteInterestMutation.mutate(interest.id)}
                     disabled={deleteInterestMutation.isPending}
@@ -155,11 +211,62 @@ export default function SettingsPage() {
           )}
         </section>
 
+        {/* Email Inbox */}
+        <section className="rounded-lg border border-border bg-card p-6">
+          <h3 className="mb-4 text-lg font-medium text-foreground">
+            Email Inbox
+          </h3>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Subscribe to newsletters using this address. Emails will appear in
+            your feed.
+          </p>
+
+          {inbox?.inbox_address ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="flex flex-1 items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
+                  <EnvelopeIcon className="h-4 w-4 text-muted-foreground" />
+                  <code className="flex-1 text-sm text-foreground">
+                    {inbox.inbox_address}
+                  </code>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={handleCopyInbox}
+                  className="gap-1"
+                >
+                  <ClipboardIcon className="h-4 w-4" />
+                  Copy
+                </Button>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Need a new address? Regenerating will invalidate the old one.
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={handleRegenerateInbox}
+                  disabled={regenerateInboxMutation.isPending}
+                  className="gap-1"
+                >
+                  <ArrowPathIcon className="h-4 w-4" />
+                  Regenerate
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Loading inbox address...
+            </p>
+          )}
+        </section>
+
         {/* API Keys */}
         <section className="rounded-lg border border-border bg-card p-6">
           <h3 className="mb-4 text-lg font-medium text-foreground">API Keys</h3>
           <p className="mb-4 text-sm text-muted-foreground">
-            Provide your own API keys for AI-powered features like summarization and intelligent ranking.
+            Provide your own API keys for AI-powered features like summarization
+            and intelligent ranking.
           </p>
 
           <div className="space-y-4">
@@ -172,7 +279,9 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2">
                   <div className="flex flex-1 items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
                     <KeyIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Key configured</span>
+                    <span className="text-sm text-muted-foreground">
+                      Key configured
+                    </span>
                     <CheckIcon className="h-4 w-4 text-green-500" />
                   </div>
                   <Button
@@ -194,14 +303,16 @@ export default function SettingsPage() {
                   />
                   <Button
                     type="submit"
-                    disabled={!apiKey.trim() || updateSettingsMutation.isPending}
+                    disabled={
+                      !apiKey.trim() || updateSettingsMutation.isPending
+                    }
                   >
                     Save
                   </Button>
                 </form>
               )}
               <p className="mt-2 text-xs text-muted-foreground">
-                Get your API key from{' '}
+                Get your API key from{" "}
                 <a
                   href="https://platform.openai.com/api-keys"
                   target="_blank"
@@ -217,7 +328,9 @@ export default function SettingsPage() {
 
         {/* Appearance */}
         <section className="rounded-lg border border-border bg-card p-6">
-          <h3 className="mb-4 text-lg font-medium text-foreground">Appearance</h3>
+          <h3 className="mb-4 text-lg font-medium text-foreground">
+            Appearance
+          </h3>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-foreground">Theme</p>
@@ -250,14 +363,13 @@ export default function SettingsPage() {
           <h3 className="mb-4 text-lg font-medium text-foreground">About</h3>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>
-              <span className="font-medium text-foreground">FeedJam</span> - Personal feed aggregator
+              <span className="font-medium text-foreground">FeedJam</span> -
+              Personal feed aggregator
             </p>
-            <p>
-              Built with FastAPI, React, and TanStack Query
-            </p>
+            <p>Built with FastAPI, React, and TanStack Query</p>
           </div>
         </section>
       </div>
     </div>
-  )
+  );
 }

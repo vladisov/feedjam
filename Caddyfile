@@ -1,0 +1,24 @@
+{$DOMAIN:localhost} {
+    # API routes
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy api:8000
+    }
+
+    # Webhook routes
+    handle /webhooks/* {
+        reverse_proxy api:8000
+    }
+
+    # Health check
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    # Frontend static files
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}

@@ -1,6 +1,7 @@
 """User repository."""
 
 import secrets
+import string
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,10 +12,13 @@ from schemas import UserIn, UserOut, UserSettingsIn, UserSettingsOut
 # Domain for inbound email addresses
 INBOX_DOMAIN = "in.feedjam.app"
 
+# Base62 alphabet for clean tokens
+BASE62 = string.ascii_letters + string.digits
 
-def _generate_email_token() -> str:
-    """Generate a unique 16-character token for email inbox address."""
-    return secrets.token_hex(8)
+
+def _generate_email_token(length: int = 10) -> str:
+    """Generate a clean base62 token for email inbox address."""
+    return "".join(secrets.choice(BASE62) for _ in range(length))
 
 
 class UserStorage:
@@ -76,10 +80,14 @@ class UserStorage:
         return self._to_user_out(db_user)
 
     def generate_email_token(self, user_id: int) -> str | None:
-        """Generate or regenerate email token for a user."""
+        """Generate or regenerate email token for a user.
+
+        Returns the new token, or None if user not found.
+        """
         user = self._get_orm(user_id)
         if not user:
             return None
+
         user.email_token = _generate_email_token()
         self.db.commit()
         self.db.refresh(user)

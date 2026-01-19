@@ -124,30 +124,28 @@ class EmailService:
         """Extract readable content from email body. Prefers HTML over plain text."""
         if html:
             return self._clean_html(html)
-        return text[:MAX_CONTENT_LENGTH] if text else ""
+        if text:
+            return text[:MAX_CONTENT_LENGTH]
+        return ""
 
     def _clean_html(self, html: str) -> str:
         """Clean HTML email content for display.
 
-        Removes scripts, styles, and extracts text while preserving links.
+        Removes scripts, styles, and extracts text while preserving structure.
         """
         try:
             soup = BeautifulSoup(html, "html.parser")
 
-            # Remove unwanted elements
             for element in soup(["script", "style", "head", "meta"]):
                 element.decompose()
 
-            # Get text content
             text = soup.get_text(separator=" ", strip=True)
-
-            # Clean up whitespace
             text = re.sub(r"\s+", " ", text).strip()
 
             return text[:MAX_CONTENT_LENGTH]
-        except Exception as e:
-            logger.warning(f"Error cleaning HTML: {e}")
-            return html[:MAX_CONTENT_LENGTH] if html else ""
+        except Exception:
+            logger.warning("Failed to parse HTML email content, using raw text")
+            return html[:MAX_CONTENT_LENGTH]
 
     def _generate_local_id(self, payload: InboundEmailPayload) -> str:
         """Generate a unique local ID for the email."""

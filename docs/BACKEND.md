@@ -634,6 +634,58 @@ def fetch_and_save_items(self, subscription_id: int):
 - **Combined prompts**: Single call extracts summary + topics + quality score
 - **Graceful degradation**: Returns original items if LLM fails
 
+## Email Inbox (Newsletter Subscriptions)
+
+Users can subscribe to email newsletters that appear in their feed.
+
+### How It Works
+1. Each user gets a unique inbox address: `{token}@in.feedjam.app`
+2. User subscribes to newsletters using this address
+3. Cloudflare Email Worker receives emails and POSTs to `/webhooks/inbound-email`
+4. Emails become feed items (each sender becomes a source like `newsletter-example-com`)
+
+### Model
+```python
+class User(Base):
+    # ... existing fields
+    email_token: Mapped[str | None] = mapped_column(String(32), unique=True, index=True)
+```
+
+### API Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/users/me/inbox` | Get inbox address (auto-generates token if missing) |
+| POST | `/users/me/inbox/regenerate` | Regenerate inbox address (invalidates old one) |
+| POST | `/webhooks/inbound-email` | Receive emails from Cloudflare worker |
+
+### Token Format
+Tokens use base62 encoding (a-z, A-Z, 0-9) for clean, readable addresses:
+```python
+# Example: xK9mPq2nLr@in.feedjam.app
+BASE62 = string.ascii_letters + string.digits
+
+def _generate_email_token(length: int = 10) -> str:
+    return "".join(secrets.choice(BASE62) for _ in range(length))
+```
+
+### Cloudflare Email Worker
+See `cloudflare-worker/` for the worker that:
+- Receives emails via Cloudflare Email Routing
+- Parses email content (handles multipart, base64, quoted-printable)
+- POSTs to webhook endpoint
+
+### EmailService (`service/email_service.py`)
+```python
+class EmailService:
+    def process_inbound_email(self, payload: InboundEmailPayload) -> int | None:
+        """Process email and create feed item. Returns feed_item_id."""
+        # 1. Extract token from recipient address
+        # 2. Find user by token
+        # 3. Get/create source for sender
+        # 4. Convert email to FeedItemIn
+        # 5. Save to feed storage
+```
+
 ## User Settings & API Keys
 
 Users can provide their own API keys for AI-powered features.

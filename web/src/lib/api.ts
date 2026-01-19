@@ -1,10 +1,13 @@
 import type {
   UserFeed,
+  FeedItem,
+  DigestItem,
   Subscription,
   UserInterest,
   UserInterestIn,
   UserSettings,
   UserSettingsIn,
+  InboxAddress,
   SearchResultItem,
   SearchParams,
   AuthUser,
@@ -186,6 +189,26 @@ export const api = {
   getFeed: (): Promise<UserFeed> =>
     get(`${API_URL}/feed`),
 
+  getDigest: async (): Promise<FeedItem[]> => {
+    const items = await get<DigestItem[]>(`${API_URL}/feed/digest`)
+    return items.map((item): FeedItem => ({
+      id: item.feed_item_id,
+      feed_item_id: item.feed_item_id,
+      title: item.title,
+      summary: item.summary,
+      description: item.description,
+      source_name: item.source_name,
+      article_url: item.article_url,
+      comments_url: item.comments_url,
+      points: item.points,
+      views: item.views,
+      rank_score: item.rank_score,
+      state: { id: 0, ...item.state },
+      created_at: item.created_at,
+      updated_at: null,
+    }))
+  },
+
   markRead: (itemId: number): Promise<void> =>
     post(`${API_URL}/feed/mark-read/${itemId}`),
 
@@ -250,4 +273,11 @@ export const api = {
 
   updateSettings: (settings: UserSettingsIn): Promise<UserSettings> =>
     putJson(`${API_URL}/users/me/settings`, settings),
+
+  // Inbox (authenticated via /users/me)
+  getInbox: (): Promise<InboxAddress> =>
+    get(`${API_URL}/users/me/inbox`),
+
+  regenerateInbox: (): Promise<InboxAddress> =>
+    post(`${API_URL}/users/me/inbox/regenerate`),
 }

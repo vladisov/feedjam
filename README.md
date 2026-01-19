@@ -161,6 +161,17 @@ In Docker, migrations run automatically when the container starts.
 | GET | `/runs/{subscription_id}` | Get runs for subscription |
 | POST | `/runs` | Trigger manual fetch |
 
+### Email Inbox
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/users/me/inbox` | Get user's inbox address |
+| POST | `/users/me/inbox/regenerate` | Regenerate inbox address |
+
+### Webhooks
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/webhooks/inbound-email` | Receive emails (from Cloudflare worker) |
+
 ### Health
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -176,6 +187,7 @@ FeedJam auto-detects source types from URLs:
 - **Reddit** - Subreddits and user feeds
 - **YouTube** - Channel and playlist feeds
 - **GitHub** - Releases, commits, activity feeds
+- **Email** - Newsletter subscriptions via unique inbox address
 
 ## Environment Variables
 

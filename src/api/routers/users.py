@@ -131,10 +131,18 @@ def get_my_inbox(
     user_id: int = Depends(get_current_user_id),
     user_storage: UserStorage = Depends(get_user_storage),
 ):
-    """Get the inbox address for the authenticated user."""
+    """Get the inbox address for the authenticated user.
+
+    Auto-generates an email token if the user doesn't have one yet.
+    """
     user = user_storage.get(user_id)
-    if not user or not user.inbox_address:
-        raise EntityNotFoundException("Inbox", user_id)
+    if not user:
+        raise EntityNotFoundException("User", user_id)
+
+    if not user.inbox_address:
+        user_storage.generate_email_token(user_id)
+        user = user_storage.get(user_id)
+
     return InboxAddressOut(inbox_address=user.inbox_address, email_token=user.email_token)
 
 
@@ -145,9 +153,10 @@ def regenerate_my_inbox(
 ):
     """Regenerate the inbox address for the authenticated user.
 
-    Invalidates the old inbox address and creates a new one.
+    Invalidates the old address and creates a new one.
     """
     if not user_storage.generate_email_token(user_id):
         raise EntityNotFoundException("User", user_id)
+
     user = user_storage.get(user_id)
     return InboxAddressOut(inbox_address=user.inbox_address, email_token=user.email_token)

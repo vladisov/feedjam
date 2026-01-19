@@ -1,6 +1,6 @@
 """Webhook API endpoints for external integrations."""
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from schemas.email import InboundEmailPayload, InboundEmailResponse
 from service.email_service import EmailService
@@ -13,13 +13,11 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 def receive_inbound_email(
     payload: InboundEmailPayload,
     email_service: EmailService = Depends(get_email_service),
-    x_webhook_secret: str | None = Header(None),
 ):
     """Receive inbound email from Cloudflare Email Worker.
 
     Emails are converted to feed items for the recipient user.
     """
-    # TODO: Validate webhook secret in production
     feed_item_id = email_service.process_inbound_email(payload)
     if feed_item_id is None:
         raise HTTPException(
