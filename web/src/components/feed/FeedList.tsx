@@ -1,25 +1,45 @@
+import { useEffect, useRef, useState } from 'react'
 import { FeedCard } from './FeedCard'
+import { SwipeableCard } from './SwipeableCard'
+import type { FeedItemActions } from '@/types/actions'
 import type { FeedItem } from '@/types/feed'
 
-interface FeedListProps {
+function useIsTouchDevice(): boolean {
+  const [isTouch, setIsTouch] = useState(false)
+
+  useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  }, [])
+
+  return isTouch
+}
+
+interface FeedListProps extends FeedItemActions {
   items: FeedItem[]
   showSummaries?: boolean
-  onToggleStar?: (item: FeedItem) => void
-  onToggleLike?: (item: FeedItem) => void
-  onToggleDislike?: (item: FeedItem) => void
-  onMarkRead?: (item: FeedItem) => void
-  onToggleHide?: (item: FeedItem) => void
+  selectedIndex?: number
 }
 
 export function FeedList({
   items,
   showSummaries = true,
+  selectedIndex = -1,
   onToggleStar,
   onToggleLike,
   onToggleDislike,
   onMarkRead,
   onToggleHide,
-}: FeedListProps) {
+}: FeedListProps): React.ReactElement {
+  const selectedRef = useRef<HTMLDivElement>(null)
+  const isTouchDevice = useIsTouchDevice()
+
+  // Scroll selected item into view
+  useEffect(() => {
+    if (selectedIndex >= 0 && selectedRef.current) {
+      selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [selectedIndex])
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -31,20 +51,40 @@ export function FeedList({
     )
   }
 
+  function renderItem(item: FeedItem, index: number): React.ReactElement {
+    const isSelected = index === selectedIndex
+    const card = (
+      <FeedCard
+        ref={isSelected ? selectedRef : null}
+        item={item}
+        showSummary={showSummaries}
+        isSelected={isSelected}
+        onToggleStar={onToggleStar}
+        onToggleLike={onToggleLike}
+        onToggleDislike={onToggleDislike}
+        onMarkRead={onMarkRead}
+        onToggleHide={onToggleHide}
+      />
+    )
+
+    if (isTouchDevice) {
+      return (
+        <SwipeableCard
+          key={item.id}
+          onSwipeLeft={() => onToggleHide?.(item)}
+          onSwipeRight={() => onToggleStar?.(item)}
+        >
+          {card}
+        </SwipeableCard>
+      )
+    }
+
+    return <div key={item.id}>{card}</div>
+  }
+
   return (
     <div className="space-y-3">
-      {items.map((item) => (
-        <FeedCard
-          key={item.id}
-          item={item}
-          showSummary={showSummaries}
-          onToggleStar={onToggleStar}
-          onToggleLike={onToggleLike}
-          onToggleDislike={onToggleDislike}
-          onMarkRead={onMarkRead}
-          onToggleHide={onToggleHide}
-        />
-      ))}
+      {items.map(renderItem)}
     </div>
   )
 }

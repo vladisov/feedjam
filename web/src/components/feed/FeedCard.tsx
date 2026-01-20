@@ -1,18 +1,20 @@
+import { forwardRef } from 'react'
 import {
-  ChatBubbleLeftIcon,
   ArrowTopRightOnSquareIcon,
   BookmarkIcon,
+  ChatBubbleLeftIcon,
   EyeIcon,
-  HandThumbUpIcon,
   HandThumbDownIcon,
+  HandThumbUpIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import {
   BookmarkIcon as BookmarkIconSolid,
-  HandThumbUpIcon as HandThumbUpIconSolid,
   HandThumbDownIcon as HandThumbDownIconSolid,
+  HandThumbUpIcon as HandThumbUpIconSolid,
 } from '@heroicons/react/24/solid'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
+import type { FeedItemActions } from '@/types/actions'
 import type { FeedItem } from '@/types/feed'
 
 interface ActionButtonProps {
@@ -47,25 +49,25 @@ function ActionButton({
   )
 }
 
-interface FeedCardProps {
+interface FeedCardProps extends FeedItemActions {
   item: FeedItem
   showSummary?: boolean
-  onToggleStar?: (item: FeedItem) => void
-  onToggleLike?: (item: FeedItem) => void
-  onToggleDislike?: (item: FeedItem) => void
-  onMarkRead?: (item: FeedItem) => void
-  onToggleHide?: (item: FeedItem) => void
+  isSelected?: boolean
 }
 
-export function FeedCard({
-  item,
-  showSummary = true,
-  onToggleStar,
-  onToggleLike,
-  onToggleDislike,
-  onMarkRead,
-  onToggleHide,
-}: FeedCardProps): React.ReactElement {
+export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedCard(
+  {
+    item,
+    showSummary = true,
+    isSelected = false,
+    onToggleStar,
+    onToggleLike,
+    onToggleDislike,
+    onMarkRead,
+    onToggleHide,
+  },
+  ref
+) {
   const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked } = item.state
 
   const handleArticleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -80,9 +82,11 @@ export function FeedCard({
 
   return (
     <article
+      ref={ref}
       className={cn(
         'group rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/50',
-        isRead && 'opacity-60'
+        isRead && 'opacity-60',
+        isSelected && 'ring-2 ring-primary border-primary'
       )}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -178,4 +182,4 @@ export function FeedCard({
       </div>
     </article>
   )
-}
+})

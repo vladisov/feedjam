@@ -2,17 +2,73 @@ import { useState } from 'react'
 import { useSubscriptionsQuery } from '@/hooks/useSubscriptionsQuery'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
-import { PlusIcon, RssIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, RssIcon, TrashIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { formatDate } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import type { Subscription } from '@/types/feed'
 
-export default function SubscriptionsPage() {
+type HealthStatus = 'healthy' | 'stale' | 'pending' | 'error'
+
+function getHealthStatus(lastRun: string | null, createdAt: string): HealthStatus {
+  if (!lastRun) {
+    // If created within last 10 minutes, it's still pending first fetch
+    const minutesSinceCreated = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60)
+    return minutesSinceCreated < 10 ? 'pending' : 'error'
+  }
+  const hoursSinceRun = (Date.now() - new Date(lastRun).getTime()) / (1000 * 60 * 60)
+  if (hoursSinceRun < 6) return 'healthy'
+  if (hoursSinceRun < 24) return 'stale'
+  return 'error'
+}
+
+interface HealthIndicatorProps {
+  subscription: Subscription
+}
+
+function HealthIndicator({ subscription }: HealthIndicatorProps): React.ReactElement {
+  const status = getHealthStatus(subscription.last_run, subscription.created_at)
+
+  switch (status) {
+    case 'healthy':
+      return (
+        <span
+          className="h-2 w-2 rounded-full bg-green-500"
+          title="Feed is healthy - fetched recently"
+        />
+      )
+    case 'stale':
+      return (
+        <span
+          className="h-2 w-2 rounded-full bg-yellow-500"
+          title="Feed may be stale - not fetched in the last 6 hours"
+        />
+      )
+    case 'pending':
+      return (
+        <ClockIcon
+          className="h-4 w-4 animate-pulse text-muted-foreground"
+          title="Fetching feed for the first time..."
+        />
+      )
+    case 'error':
+      return (
+        <ExclamationTriangleIcon
+          className="h-4 w-4 text-red-500"
+          title={subscription.last_run ? 'Feed error - not fetched in over 24 hours' : 'Feed never fetched'}
+        />
+      )
+  }
+}
+
+export default function SubscriptionsPage(): React.ReactElement {
   const [newUrl, setNewUrl] = useState('')
   const { subscriptions, isLoading, error, addSubscription, isAdding, deleteSubscription } = useSubscriptionsQuery()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  function handleSubmit(e: React.FormEvent): void {
     e.preventDefault()
-    if (newUrl.trim()) {
-      addSubscription(newUrl.trim())
+    const trimmedUrl = newUrl.trim()
+    if (trimmedUrl) {
+      addSubscription(trimmedUrl)
       setNewUrl('')
     }
   }
@@ -70,19 +126,27 @@ export default function SubscriptionsPage() {
           {subscriptions.map((sub) => (
             <div
               key={sub.id}
-              className="flex items-center justify-between rounded-lg border border-border bg-card p-4"
+              className={cn(
+                'flex items-center justify-between rounded-lg border bg-card p-4',
+                getHealthStatus(sub.last_run, sub.created_at) === 'error'
+                  ? 'border-red-500/50'
+                  : 'border-border'
+              )}
             >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-foreground">
-                  {sub.source_name}
-                </p>
-                <p className="truncate text-sm text-muted-foreground">
-                  {sub.resource_url}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Added {formatDate(sub.created_at)}
-                  {sub.last_run && ` · Last fetched ${formatDate(sub.last_run)}`}
-                </p>
+              <div className="flex items-center gap-3">
+                <HealthIndicator subscription={sub} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-foreground">
+                    {sub.source_name}
+                  </p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {sub.resource_url}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Added {formatDate(sub.created_at)}
+                    {sub.last_run && ` · Last fetched ${formatDate(sub.last_run)}`}
+                  </p>
+                </div>
               </div>
               <Button
                 variant="ghost"
