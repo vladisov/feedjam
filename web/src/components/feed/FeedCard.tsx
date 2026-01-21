@@ -86,7 +86,7 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
       className={cn(
         'group rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/50',
         isRead && 'opacity-60',
-        isSelected && 'ring-2 ring-primary border-primary'
+        isSelected && 'sm:ring-2 sm:ring-primary sm:border-primary'
       )}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
