@@ -112,11 +112,11 @@ class ContentProcessor:
         source = item.source_name.lower()
 
         # Social media - never fetch, use post content directly
-        if any(s in source for s in ['telegram', 'twitter']):
+        if any(s in source for s in ["telegram", "twitter"]):
             return False
 
         # Link aggregators - always fetch the actual article
-        if any(s in source for s in ['hackernews', 'reddit', 'lobsters']):
+        if any(s in source for s in ["hackernews", "reddit", "lobsters"]):
             return bool(item.article_url)
 
         # RSS/blogs - fetch if description is short (likely just a teaser)
@@ -138,9 +138,7 @@ class ContentProcessor:
             logger.warning(f"Failed to fetch content from {url}: {e}")
             return None
 
-    def process_item_with_content(
-        self, item: FeedItemIn, fetch_content: bool = True
-    ) -> FeedItemIn:
+    def process_item_with_content(self, item: FeedItemIn, fetch_content: bool = True) -> FeedItemIn:
         """Process a single item, optionally fetching full article content.
 
         Args:
@@ -185,9 +183,6 @@ class ContentProcessor:
             Embedding vectors for each item
         """
         texts = [f"{item.title} {item.summary or ''}" for item in items]
-        hashes = [
-            f"{item.title}|{item.article_url or ''}|{item.source_name}"
-            for item in items
-        ]
+        hashes = [f"{item.title}|{item.article_url or ''}|{item.source_name}" for item in items]
 
         return self.llm.get_embeddings(texts, hashes)

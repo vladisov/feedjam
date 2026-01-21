@@ -160,3 +160,14 @@ def regenerate_my_inbox(
 
     user = user_storage.get(user_id)
     return InboxAddressOut(inbox_address=user.inbox_address, email_token=user.email_token)
+
+
+@router.post("/me/complete-onboarding")
+def complete_onboarding(
+    user_id: int = Depends(get_current_user_id),
+    user_storage: UserStorage = Depends(get_user_storage),
+):
+    """Mark the user's onboarding as completed."""
+    if not user_storage.complete_onboarding(user_id):
+        raise EntityNotFoundException("User", user_id)
+    return {"status": "ok"}

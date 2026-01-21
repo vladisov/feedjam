@@ -109,9 +109,7 @@ class RankingService:
     # Interest scoring
     # -------------------------------------------------------------------------
 
-    def _compute_interest_score(
-        self, item: UserFeedItemIn, interests: dict[str, float]
-    ) -> float:
+    def _compute_interest_score(self, item: UserFeedItemIn, interests: dict[str, float]) -> float:
         """Compute interest score based on topic matches in title/summary.
 
         Returns a score in [0.0, 1.0] based on matched topics and their weights.
@@ -159,9 +157,7 @@ class RankingService:
     # Popularity scoring (per-source-type normalization)
     # -------------------------------------------------------------------------
 
-    def _build_popularity_context(
-        self, items: list[UserFeedItemIn]
-    ) -> dict[str, float]:
+    def _build_popularity_context(self, items: list[UserFeedItemIn]) -> dict[str, float]:
         """Build max popularity values per source type for normalization.
 
         Returns a dict mapping source_type -> max_raw_popularity.

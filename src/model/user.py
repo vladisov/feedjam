@@ -23,4 +23,9 @@ class User(Base):
     openai_api_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Unique token for inbound email address (e.g., {token}@in.feedjam.app)
-    email_token: Mapped[str | None] = mapped_column(String(32), unique=True, index=True, nullable=True)
+    email_token: Mapped[str | None] = mapped_column(
+        String(32), unique=True, index=True, nullable=True
+    )
+
+    # Onboarding status
+    onboarding_completed: Mapped[bool] = mapped_column(default=False)

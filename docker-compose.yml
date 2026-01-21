@@ -1,3 +1,6 @@
+# Local development docker-compose
+# Uses .env for defaults, .env.local for overrides
+
 services:
   db:
     image: postgres:16-alpine

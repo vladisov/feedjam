@@ -21,6 +21,7 @@ class Base(DeclarativeBase):
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def _db_session() -> Generator[Session, None, None]:
     """Core database session logic."""
     db = SessionLocal()

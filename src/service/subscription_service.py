@@ -5,8 +5,9 @@ from repository.feed_storage import FeedStorage
 from repository.source_storage import SourceStorage
 from repository.subscription_storage import SubscriptionStorage
 from schemas import SourceIn, SubscriptionIn, SubscriptionOut
-from schemas.subscriptions import SubscriptionCreateIn
+from schemas.subscriptions import FeedPreviewItem, FeedPreviewOut, SubscriptionCreateIn
 from service.parser import detect_source_type, parse_source_name
+from service.parser.base import get_parser
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -64,11 +65,12 @@ class SubscriptionService:
         """Get all subscriptions for a user."""
         subscriptions = self.subscription_storage.get_by_user(user_id)
 
-        # Enrich with source name
+        # Enrich with source name and URL
         for sub in subscriptions:
             source = self.source_storage.get(sub.source_id)
             if source:
                 sub.source_name = source.name
+                sub.resource_url = source.resource_url
 
         return subscriptions
 
@@ -79,3 +81,53 @@ class SubscriptionService:
     def delete(self, subscription_id: int) -> bool:
         """Delete a subscription."""
         return self.subscription_storage.delete(subscription_id)
+
+    def preview_feed(self, resource_url: str) -> FeedPreviewOut:
+        """Preview a feed URL without subscribing."""
+        from model.source import Source
+
+        source_type = detect_source_type(resource_url) or SourceType.RSS.value
+        source_name = parse_source_name(resource_url, source_type)
+
+        def make_error_response(error: str) -> FeedPreviewOut:
+            return FeedPreviewOut(
+                source_type=source_type,
+                source_name=source_name,
+                item_count=0,
+                items=[],
+                error=error,
+            )
+
+        parser = get_parser(source_type)
+        if not parser:
+            return make_error_response(f"No parser available for source type: {source_type}")
+
+        try:
+            mock_source = Source(
+                id=0,
+                name=source_name,
+                resource_url=resource_url,
+                source_type=source_type,
+            )
+            items = parser.parse(mock_source)
+
+            preview_items = [
+                FeedPreviewItem(
+                    title=item.title,
+                    link=item.link,
+                    published=item.published,
+                    description=item.description[:200] if item.description else None,
+                )
+                for item in items[:10]
+            ]
+
+            return FeedPreviewOut(
+                source_type=source_type,
+                source_name=source_name,
+                item_count=len(items),
+                items=preview_items,
+            )
+
+        except Exception as e:
+            logger.exception("Error previewing feed: %s", resource_url)
+            return make_error_response(str(e))

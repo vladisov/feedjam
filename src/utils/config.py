@@ -26,8 +26,10 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", "7")
 # Warn if JWT secret is not set (checked at startup)
 if not JWT_SECRET_KEY:
     import secrets
+
     JWT_SECRET_KEY = secrets.token_urlsafe(32)
     import warnings
+
     warnings.warn(
         "JWT_SECRET_KEY not set! Using random key - tokens will be invalidated on restart. "
         "Set JWT_SECRET_KEY environment variable for production.",

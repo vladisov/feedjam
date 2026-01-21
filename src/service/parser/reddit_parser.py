@@ -16,9 +16,7 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; FeedJam/1.0; +https://feedjam.app)"
-}
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; FeedJam/1.0; +https://feedjam.app)"}
 
 
 @register_parser("reddit")
@@ -33,8 +31,16 @@ class RedditParser(BaseParser):
     """
 
     VALID_PATH_PATTERNS = (
-        "/r/", "/user/", "/u/", ".json", ".rss",
-        "/search", "/top", "/new", "/hot", "/rising",
+        "/r/",
+        "/user/",
+        "/u/",
+        ".json",
+        ".rss",
+        "/search",
+        "/top",
+        "/new",
+        "/hot",
+        "/rising",
     )
 
     @classmethod

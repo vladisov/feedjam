@@ -51,9 +51,8 @@ class RequestBatcher:
             item_tokens = item.estimated_tokens()
 
             # Start new batch if limits exceeded
-            should_start_new = (
-                len(current_batch) >= self.batch_size
-                or (current_tokens + item_tokens > self.max_tokens and current_batch)
+            should_start_new = len(current_batch) >= self.batch_size or (
+                current_tokens + item_tokens > self.max_tokens and current_batch
             )
 
             if should_start_new:
@@ -70,7 +69,9 @@ class RequestBatcher:
 
         return batches
 
-    def create_embedding_batches(self, texts: list[str], max_per_batch: int = 100) -> list[list[str]]:
+    def create_embedding_batches(
+        self, texts: list[str], max_per_batch: int = 100
+    ) -> list[list[str]]:
         """Batch texts for embedding API (typically allows larger batches).
 
         Args:
@@ -83,7 +84,4 @@ class RequestBatcher:
         if not texts:
             return []
 
-        return [
-            texts[i : i + max_per_batch]
-            for i in range(0, len(texts), max_per_batch)
-        ]
+        return [texts[i : i + max_per_batch] for i in range(0, len(texts), max_per_batch)]

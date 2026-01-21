@@ -170,17 +170,20 @@ class BaseTestCase:
         password: str = "password123",
     ) -> tuple[AuthUserOut, str]:
         """Register a user and return user info and access token."""
-        response = self.client.post("/auth/register", json={
-            "email": email,
-            "password": password,
-        })
+        response = self.client.post(
+            "/auth/register",
+            json={
+                "email": email,
+                "password": password,
+            },
+        )
         assert response.status_code == 200, f"Failed to register: {response.json()}"
         data = response.json()
         access_token = data["access_token"]
 
-        me_response = self.client.get("/auth/me", headers={
-            "Authorization": f"Bearer {access_token}"
-        })
+        me_response = self.client.get(
+            "/auth/me", headers={"Authorization": f"Bearer {access_token}"}
+        )
         user = AuthUserOut(**me_response.json())
         return user, access_token
 

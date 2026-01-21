@@ -60,9 +60,7 @@ class LLMService:
             return [ProcessedContent() for _ in items]
 
         # Compute hashes and check cache
-        item_hashes = [
-            content_hash(item.title, None, item.source_name) for item in items
-        ]
+        item_hashes = [content_hash(item.title, None, item.source_name) for item in items]
         cached = self.cache.get_processed_batch(item_hashes)
 
         # Separate cached vs uncached
@@ -231,9 +229,7 @@ class LLMService:
     ) -> list[float]:
         """Make LLM call for relevance scoring."""
         # Format interests with weights
-        interest_str = ", ".join(
-            f"{topic} ({weight}x)" for topic, weight in interests.items()
-        )
+        interest_str = ", ".join(f"{topic} ({weight}x)" for topic, weight in interests.items())
 
         prompt = SCORE_RELEVANCE_PROMPT.format(
             interests=interest_str,

@@ -51,7 +51,6 @@ class FeedStorage:
         user_feed = self.db.execute(stmt).unique().scalar_one_or_none()
         return UserFeedOut.model_validate(user_feed) if user_feed else None
 
-
     def save_user_feed(self, user_feed: UserFeedIn) -> int:
         """Save a new user feed."""
         new_user_feed = UserFeed(
@@ -107,7 +106,9 @@ class FeedStorage:
         self.db.commit()
         return True, item.source_name, item.feed_item_id, item.state.like
 
-    def toggle_dislike(self, user_id: int, item_id: int) -> tuple[bool, str | None, int | None, bool]:
+    def toggle_dislike(
+        self, user_id: int, item_id: int
+    ) -> tuple[bool, str | None, int | None, bool]:
         """Toggle dislike state for a feed item.
 
         Returns: (success, source_name, feed_item_id, new_dislike_state)

@@ -44,3 +44,4 @@ class AuthUserOut(BaseModel):
     is_active: bool
     is_verified: bool
     created_at: datetime
+    onboarding_completed: bool

@@ -3,6 +3,7 @@ import type {
   FeedItem,
   DigestItem,
   Subscription,
+  FeedPreview,
   UserInterest,
   UserInterestIn,
   UserSettings,
@@ -45,7 +46,7 @@ function getAuthHeaders(): HeadersInit {
 // Auth error event - AuthContext listens for this to trigger logout
 export const AUTH_ERROR_EVENT = 'feedjam:auth_error'
 
-function dispatchAuthError() {
+function dispatchAuthError(): void {
   window.dispatchEvent(new CustomEvent(AUTH_ERROR_EVENT))
 }
 
@@ -147,6 +148,35 @@ function get<T>(url: string): Promise<T> {
   return doFetch()
 }
 
+function parseApiError(errorData: unknown, fallback: string): string {
+  if (!errorData || typeof errorData !== 'object') return fallback
+
+  const data = errorData as Record<string, unknown>
+
+  // FastAPI validation errors: { detail: [{ loc, msg, type }, ...] }
+  if (Array.isArray(data.detail) && data.detail.length > 0) {
+    const firstError = data.detail[0] as { loc?: string[]; msg?: string }
+    const field = firstError.loc?.at(-1) // e.g., "password"
+    const msg = firstError.msg // e.g., "String should have at least 8 characters"
+    if (field && msg) {
+      return `${field}: ${msg}`
+    }
+    if (msg) return msg
+  }
+
+  // Simple string detail: { detail: "Error message" }
+  if (typeof data.detail === 'string') {
+    return data.detail
+  }
+
+  // Generic message field
+  if (typeof data.message === 'string') {
+    return data.message
+  }
+
+  return fallback
+}
+
 async function authRequest(
   endpoint: string,
   body: LoginCredentials | RegisterCredentials,
@@ -158,13 +188,14 @@ async function authRequest(
     body: JSON.stringify(body),
   })
   if (!response.ok) {
-    // Try to parse JSON error from backend
+    let errorMessage = fallbackError
     try {
       const errorData = await response.json()
-      throw new Error(errorData.message || fallbackError)
+      errorMessage = parseApiError(errorData, fallbackError)
     } catch {
-      throw new Error(fallbackError)
+      // JSON parsing failed, use fallback
     }
+    throw new Error(errorMessage)
   }
   const data: TokenResponse = await response.json()
   tokenStorage.setTokens(data.access_token, data.refresh_token)
@@ -232,15 +263,12 @@ export const api = {
 
   searchItems: (params: SearchParams): Promise<SearchResultItem[]> => {
     const searchParams = new URLSearchParams()
-    if (params.liked !== undefined) searchParams.set('liked', String(params.liked))
-    if (params.disliked !== undefined) searchParams.set('disliked', String(params.disliked))
-    if (params.starred !== undefined) searchParams.set('starred', String(params.starred))
-    if (params.read !== undefined) searchParams.set('read', String(params.read))
-    if (params.hidden !== undefined) searchParams.set('hidden', String(params.hidden))
-    if (params.text) searchParams.set('text', params.text)
-    if (params.source) searchParams.set('source', params.source)
-    if (params.limit) searchParams.set('limit', String(params.limit))
-    if (params.offset) searchParams.set('offset', String(params.offset))
+    const entries = Object.entries(params) as [keyof SearchParams, SearchParams[keyof SearchParams]][]
+    for (const [key, value] of entries) {
+      if (value !== undefined && value !== null && value !== '') {
+        searchParams.set(key, String(value))
+      }
+    }
     return get(`${API_URL}/feed/search?${searchParams.toString()}`)
   },
 
@@ -253,6 +281,15 @@ export const api = {
 
   deleteSubscription: (subscriptionId: number): Promise<void> =>
     del(`${API_URL}/subscriptions/${subscriptionId}`),
+
+  previewFeed: (url: string): Promise<FeedPreview> =>
+    get(`${API_URL}/subscriptions/preview?url=${encodeURIComponent(url)}`),
+
+  refetchSubscription: (subscriptionId: number): Promise<{ status: string }> =>
+    post(`${API_URL}/subscriptions/${subscriptionId}/refetch`),
+
+  batchSubscribe: (urls: string[]): Promise<Subscription[]> =>
+    postJson(`${API_URL}/subscriptions/batch`, { urls }),
 
   // Interests (authenticated via /users/me)
   getInterests: (): Promise<UserInterest[]> =>
@@ -280,4 +317,7 @@ export const api = {
 
   regenerateInbox: (): Promise<InboxAddress> =>
     post(`${API_URL}/users/me/inbox/regenerate`),
+
+  completeOnboarding: (): Promise<{ status: string }> =>
+    post(`${API_URL}/users/me/complete-onboarding`),
 }

@@ -103,9 +103,7 @@ class EmailService:
         # Combine into source name
         return f"email-{local}-{domain_clean}"
 
-    def _email_to_feed_item(
-        self, payload: InboundEmailPayload, source_name: str
-    ) -> FeedItemIn:
+    def _email_to_feed_item(self, payload: InboundEmailPayload, source_name: str) -> FeedItemIn:
         """Convert email payload to FeedItemIn."""
         content = self._extract_content(payload.html, payload.text)
         local_id = self._generate_local_id(payload)

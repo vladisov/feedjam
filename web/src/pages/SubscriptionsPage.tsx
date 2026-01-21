@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { useSubscriptionsQuery } from '@/hooks/useSubscriptionsQuery'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
-import { PlusIcon, RssIcon, TrashIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline'
-import { formatDate } from '@/lib/utils'
-import { cn } from '@/lib/utils'
+import { PlusIcon, RssIcon, TrashIcon, ExclamationTriangleIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { cn, formatDate } from '@/lib/utils'
 import type { Subscription } from '@/types/feed'
 
 type HealthStatus = 'healthy' | 'stale' | 'pending' | 'error'
@@ -62,7 +61,7 @@ function HealthIndicator({ subscription }: HealthIndicatorProps): React.ReactEle
 
 export default function SubscriptionsPage(): React.ReactElement {
   const [newUrl, setNewUrl] = useState('')
-  const { subscriptions, isLoading, error, addSubscription, isAdding, deleteSubscription } = useSubscriptionsQuery()
+  const { subscriptions, isLoading, error, addSubscription, isAdding, deleteSubscription, refetchSubscription } = useSubscriptionsQuery()
 
   function handleSubmit(e: React.FormEvent): void {
     e.preventDefault()
@@ -145,17 +144,35 @@ export default function SubscriptionsPage(): React.ReactElement {
                   <p className="mt-1 text-xs text-muted-foreground">
                     Added {formatDate(sub.created_at)}
                     {sub.last_run && ` · Last fetched ${formatDate(sub.last_run)}`}
+                    {sub.item_count > 0 && ` · ${sub.item_count} items`}
                   </p>
+                  {sub.last_error && (
+                    <p className="mt-1 text-xs text-red-500" title={sub.last_error}>
+                      Error: {sub.last_error.slice(0, 100)}{sub.last_error.length > 100 ? '...' : ''}
+                    </p>
+                  )}
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-4 text-muted-foreground hover:text-destructive"
-                onClick={() => deleteSubscription(sub.id)}
-              >
-                <TrashIcon className="h-4 w-4" />
-              </Button>
+              <div className="ml-4 flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => refetchSubscription(sub.id)}
+                  title="Refetch now"
+                >
+                  <ArrowPathIcon className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => deleteSubscription(sub.id)}
+                  title="Delete"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>

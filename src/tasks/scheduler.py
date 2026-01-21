@@ -38,16 +38,30 @@ def fetch_subscription(subscription_id: int) -> bool:
         factory = _create_factory_with_user_key(db, subscription.user_id)
 
         try:
-            factory.feed_service.fetch_and_save_items(subscription_id)
+            items = factory.feed_service.fetch_and_save_items(subscription_id)
+            item_count = len(items) if items else 0
             factory.subscription_storage.update(
                 subscription_id,
-                SubscriptionUpdate(is_active=True, last_run=datetime.now()),
+                SubscriptionUpdate(
+                    is_active=True,
+                    last_run=datetime.now(),
+                    last_error=None,
+                    item_count=item_count,
+                ),
             )
-            logger.info(f"Successfully fetched subscription {subscription_id}")
+            logger.info(f"Successfully fetched subscription {subscription_id}: {item_count} items")
             return True
 
         except Exception as e:
+            error_msg = str(e)[:500]  # Truncate long errors
             logger.error(f"Error fetching subscription {subscription_id}: {e}")
+            factory.subscription_storage.update(
+                subscription_id,
+                SubscriptionUpdate(
+                    last_run=datetime.now(),
+                    last_error=error_msg,
+                ),
+            )
             return False
 
 
@@ -88,6 +102,25 @@ def scheduled_generate_feeds() -> None:
             generate_user_feed(user.id)
 
 
+def _execute_run_job(run) -> bool:
+    """Execute a run job based on its type. Returns success status."""
+    job_handlers = {
+        "single_subscription": lambda: fetch_subscription(run.subscription_id)
+        if run.subscription_id
+        else False,
+        "single_user_view": lambda: generate_user_feed(run.user_id) if run.user_id else False,
+        "all_subscriptions": lambda: (scheduled_fetch_all(), True)[1],
+        "all_user_views": lambda: (scheduled_generate_feeds(), True)[1],
+    }
+
+    handler = job_handlers.get(run.job_type)
+    if handler:
+        return handler()
+
+    logger.warning(f"Unknown job type: {run.job_type}")
+    return False
+
+
 def process_pending_runs() -> None:
     """Process any manually created pending runs."""
     with get_db_session() as db:
@@ -98,22 +131,8 @@ def process_pending_runs() -> None:
             factory.run_storage.update_status(run.id, "running")
 
             try:
-                success = False
-                if run.job_type == "single_subscription" and run.subscription_id:
-                    success = fetch_subscription(run.subscription_id)
-                elif run.job_type == "single_user_view" and run.user_id:
-                    success = generate_user_feed(run.user_id)
-                elif run.job_type == "all_subscriptions":
-                    scheduled_fetch_all()
-                    success = True
-                elif run.job_type == "all_user_views":
-                    scheduled_generate_feeds()
-                    success = True
-                else:
-                    logger.warning(f"Unknown job type: {run.job_type}")
-
+                success = _execute_run_job(run)
                 factory.run_storage.update_status(run.id, "success" if success else "failed")
-
             except Exception as e:
                 logger.error(f"Error processing run {run.id}: {e}")
                 factory.run_storage.update_status(run.id, "failed")

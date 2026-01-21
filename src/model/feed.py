@@ -30,9 +30,7 @@ class Feed(Base):
 
 class FeedItem(Base):
     __tablename__ = "feed_items"
-    __table_args__ = (
-        Index("ix_feed_items_local_id_source", "local_id", "source_name"),
-    )
+    __table_args__ = (Index("ix_feed_items_local_id_source", "local_id", "source_name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(1024))

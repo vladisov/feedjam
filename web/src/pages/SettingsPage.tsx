@@ -357,18 +357,6 @@ export default function SettingsPage() {
             </Button>
           </div>
         </section>
-
-        {/* About */}
-        <section className="rounded-lg border border-border bg-card p-6">
-          <h3 className="mb-4 text-lg font-medium text-foreground">About</h3>
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <p>
-              <span className="font-medium text-foreground">FeedJam</span> -
-              Personal feed aggregator
-            </p>
-            <p>Built with FastAPI, React, and TanStack Query</p>
-          </div>
-        </section>
       </div>
     </div>
   );

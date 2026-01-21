@@ -8,9 +8,7 @@ from repository.db import Base
 
 class UserFeed(Base):
     __tablename__ = "user_feeds"
-    __table_args__ = (
-        Index("ix_user_feeds_user_active", "user_id", "is_active"),
-    )
+    __table_args__ = (Index("ix_user_feeds_user_active", "user_id", "is_active"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

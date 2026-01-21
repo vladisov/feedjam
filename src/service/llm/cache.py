@@ -111,10 +111,7 @@ class LLMCache:
         try:
             keys = [self._key(self.PREFIX_EMBEDDING, h) for h in hashes]
             values = self._client.mget(keys)
-            return {
-                h: json.loads(v) if v else None
-                for h, v in zip(hashes, values, strict=False)
-            }
+            return {h: json.loads(v) if v else None for h, v in zip(hashes, values, strict=False)}
         except Exception as e:
             logger.warning(f"Cache mget error: {e}")
             return {h: None for h in hashes}
@@ -156,10 +153,7 @@ class LLMCache:
         try:
             keys = [self._key(self.PREFIX_PROCESSED, h) for h in hashes]
             values = self._client.mget(keys)
-            return {
-                h: json.loads(v) if v else None
-                for h, v in zip(hashes, values, strict=False)
-            }
+            return {h: json.loads(v) if v else None for h, v in zip(hashes, values, strict=False)}
         except Exception as e:
             logger.warning(f"Cache mget error: {e}")
             return {h: None for h in hashes}

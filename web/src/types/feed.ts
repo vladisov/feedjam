@@ -46,6 +46,23 @@ export interface Subscription {
   is_active: boolean
   created_at: string
   last_run: string | null
+  last_error: string | null
+  item_count: number
+}
+
+export interface FeedPreviewItem {
+  title: string
+  link: string
+  published: string | null
+  description: string | null
+}
+
+export interface FeedPreview {
+  source_type: string
+  source_name: string
+  item_count: number
+  items: FeedPreviewItem[]
+  error: string | null
 }
 
 export interface UserInterest {
@@ -133,6 +150,7 @@ export interface AuthUser {
   is_active: boolean
   is_verified: boolean
   created_at: string
+  onboarding_completed: boolean
 }
 
 export interface TokenResponse {

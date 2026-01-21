@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { api, tokenStorage, AUTH_ERROR_EVENT } from '@/lib/api'
 import type { AuthUser, LoginCredentials, RegisterCredentials } from '@/types/feed'
 
@@ -9,6 +10,7 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>
   register: (credentials: RegisterCredentials) => Promise<void>
   logout: () => void
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -16,6 +18,7 @@ const AuthContext = createContext<AuthContextType | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const queryClient = useQueryClient()
 
   // Check existing token on mount
   useEffect(() => {
@@ -43,18 +46,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     isAuthenticated: !!user,
     login: async (credentials) => {
+      queryClient.clear()
       await api.login(credentials)
       setUser(await api.getMe())
     },
     register: async (credentials) => {
+      queryClient.clear()
       await api.register(credentials)
       setUser(await api.getMe())
     },
     logout: () => {
       api.logout()
       setUser(null)
+      queryClient.clear()
     },
-  }), [user, isLoading])
+    refreshUser: async () => {
+      setUser(await api.getMe())
+    },
+  }), [user, isLoading, queryClient])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -1,13 +1,28 @@
-# .vscode
-feedenv
-__pycache__
-web/.next
-web/node_modules
-*.log
-sqlite_feedjam.db
-feedjam.egg-info
-sqlite_feedjam.db
+# Environment files (secrets)
+.env.local
+.env.prod
+
+# IDE
+.vscode
 .idea
 *.iml
-**/.pytest_cache.DS_Store
+
+# Python
+feedenv
+__pycache__
+*.egg-info
+**/.pytest_cache
+
+# Node
+web/.next
+web/node_modules
+
+# Logs and databases
+*.log
+sqlite_feedjam.db
+
+# Build artifacts
 *.tsbuildinfo
+
+# OS
+.DS_Store

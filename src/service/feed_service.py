@@ -129,18 +129,15 @@ class FeedService:
 
     def toggle_like(self, user_id: int, item_id: int) -> dict:
         """Toggle like for a feed item and update like history."""
-        success, source_name, feed_item_id, is_liked = self.feed_storage.toggle_like(user_id, item_id)
+        success, source_name, feed_item_id, is_liked = self.feed_storage.toggle_like(
+            user_id, item_id
+        )
         if not success:
             raise EntityNotFoundException("FeedItem", item_id)
 
-        # Update like history
         if source_name:
-            if is_liked:
-                self.like_history_storage.increment_like(user_id, source_name)
-            else:
-                self.like_history_storage.decrement_like(user_id, source_name)
+            self._update_like_history(user_id, source_name, is_liked, is_like=True)
 
-        # Sync to persistent state
         if feed_item_id:
             self.user_item_state_storage.set_liked(user_id, feed_item_id, is_liked)
 
@@ -148,18 +145,15 @@ class FeedService:
 
     def toggle_dislike(self, user_id: int, item_id: int) -> dict:
         """Toggle dislike for a feed item and update like history."""
-        success, source_name, feed_item_id, is_disliked = self.feed_storage.toggle_dislike(user_id, item_id)
+        success, source_name, feed_item_id, is_disliked = self.feed_storage.toggle_dislike(
+            user_id, item_id
+        )
         if not success:
             raise EntityNotFoundException("FeedItem", item_id)
 
-        # Update like history
         if source_name:
-            if is_disliked:
-                self.like_history_storage.increment_dislike(user_id, source_name)
-            else:
-                self.like_history_storage.decrement_dislike(user_id, source_name)
+            self._update_like_history(user_id, source_name, is_disliked, is_like=False)
 
-        # Sync to persistent state
         if feed_item_id:
             self.user_item_state_storage.set_disliked(user_id, feed_item_id, is_disliked)
 
@@ -186,6 +180,21 @@ class FeedService:
             self.user_item_state_storage.set_hidden(user_id, feed_item_id, is_hidden)
 
         return {"hidden": is_hidden}
+
+    def _update_like_history(
+        self, user_id: int, source_name: str, is_active: bool, *, is_like: bool
+    ) -> None:
+        """Update like history for a source."""
+        if is_like:
+            if is_active:
+                self.like_history_storage.increment_like(user_id, source_name)
+            else:
+                self.like_history_storage.decrement_like(user_id, source_name)
+        else:
+            if is_active:
+                self.like_history_storage.increment_dislike(user_id, source_name)
+            else:
+                self.like_history_storage.decrement_dislike(user_id, source_name)
 
     def hide_read_items(self, user_id: int) -> dict:
         """Hide all read items for a user."""
@@ -279,9 +288,7 @@ class FeedService:
 
         return seen_ids
 
-    def _get_new_items(
-        self, user_id: int, seen_ids: set[int]
-    ) -> list[UserFeedItemIn]:
+    def _get_new_items(self, user_id: int, seen_ids: set[int]) -> list[UserFeedItemIn]:
         """Get new feed items not already seen."""
         all_items = self.get_items(user_id)
         new_items = [item for item in all_items if item.id not in seen_ids]

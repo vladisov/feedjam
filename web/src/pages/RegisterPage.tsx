@@ -22,8 +22,8 @@ export default function RegisterPage() {
       return
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
       return
     }
 
@@ -31,7 +31,7 @@ export default function RegisterPage() {
 
     try {
       await register({ email, password })
-      navigate('/', { replace: true })
+      navigate('/onboarding', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {

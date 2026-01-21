@@ -117,3 +117,12 @@ class UserStorage:
         """Get user's OpenAI API key (for internal use only)."""
         user = self._get_orm(user_id)
         return user.openai_api_key if user else None
+
+    def complete_onboarding(self, user_id: int) -> bool:
+        """Mark user's onboarding as completed. Returns True if successful."""
+        user = self._get_orm(user_id)
+        if not user:
+            return False
+        user.onboarding_completed = True
+        self.db.commit()
+        return True

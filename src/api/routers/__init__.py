@@ -5,4 +5,11 @@ from .subscriptions import router as subscriptions_router
 from .users import router as users_router
 from .webhooks import router as webhooks_router
 
-__all__ = ["auth_router", "users_router", "feeds_router", "subscriptions_router", "runs_router", "webhooks_router"]
+__all__ = [
+    "auth_router",
+    "users_router",
+    "feeds_router",
+    "subscriptions_router",
+    "runs_router",
+    "webhooks_router",
+]

@@ -46,7 +46,9 @@ class HackerNewsParser(BaseParser):
                 item = self._parse_entry(entry, source.name)
                 items.append(item)
             except Exception as e:
-                logger.warning(f"Failed to parse HN entry '{getattr(entry, 'title', 'unknown')}': {e}")
+                logger.warning(
+                    f"Failed to parse HN entry '{getattr(entry, 'title', 'unknown')}': {e}"
+                )
                 continue
 
         logger.info(f"Parsed {len(items)} items from HN: {source.name}")

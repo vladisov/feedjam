@@ -67,14 +67,20 @@ class SubscriptionStorage:
         if not subscription:
             return None
 
-        if update.is_active is not None:
-            subscription.is_active = update.is_active
-        if update.last_run is not None:
-            subscription.last_run = update.last_run
+        update_data = update.model_dump(exclude_none=True)
+        for field, value in update_data.items():
+            setattr(subscription, field, value)
 
         self.db.commit()
         self.db.refresh(subscription)
         return SubscriptionOut.model_validate(subscription)
+
+    def clear_error(self, subscription_id: int) -> None:
+        """Clear last_error for a subscription."""
+        subscription = self.get(subscription_id)
+        if subscription:
+            subscription.last_error = None
+            self.db.commit()
 
     def delete(self, subscription_id: int) -> bool:
         """Delete a subscription by ID."""

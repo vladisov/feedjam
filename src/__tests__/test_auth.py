@@ -36,15 +36,19 @@ class TestAuthService(BaseTestCase):
     def test_decode_token_wrong_type(self):
         """Test decoding token with wrong type fails."""
         access_token = AuthService.create_access_token(user_id=123)
-        from api.exceptions import InvalidTokenException
         import pytest
+
+        from api.exceptions import InvalidTokenException
+
         with pytest.raises(InvalidTokenException):
             AuthService.decode_token(access_token, token_type="refresh")
 
     def test_decode_invalid_token(self):
         """Test decoding invalid token fails."""
-        from api.exceptions import InvalidTokenException
         import pytest
+
+        from api.exceptions import InvalidTokenException
+
         with pytest.raises(InvalidTokenException):
             AuthService.decode_token("invalid.token.here", token_type="access")
 
@@ -54,10 +58,9 @@ class TestAuthRegister(BaseTestCase):
 
     def test_register_success(self):
         """Test successful registration."""
-        response = self.client.post("/auth/register", json={
-            "email": "test@example.com",
-            "password": "password123"
-        })
+        response = self.client.post(
+            "/auth/register", json={"email": "test@example.com", "password": "password123"}
+        )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -66,12 +69,13 @@ class TestAuthRegister(BaseTestCase):
 
     def test_register_creates_user(self):
         """Test registration creates user in database."""
-        self.client.post("/auth/register", json={
-            "email": "newuser@example.com",
-            "password": "password123"
-        })
-        from model.user import User
+        self.client.post(
+            "/auth/register", json={"email": "newuser@example.com", "password": "password123"}
+        )
         from sqlalchemy import select
+
+        from model.user import User
+
         stmt = select(User).where(User.email == "newuser@example.com")
         user = self.db.execute(stmt).scalar_one_or_none()
         assert user is not None
@@ -80,30 +84,26 @@ class TestAuthRegister(BaseTestCase):
 
     def test_register_duplicate_email(self):
         """Test registration with duplicate email fails."""
-        self.client.post("/auth/register", json={
-            "email": "dupe@example.com",
-            "password": "password123"
-        })
-        response = self.client.post("/auth/register", json={
-            "email": "dupe@example.com",
-            "password": "different"
-        })
+        self.client.post(
+            "/auth/register", json={"email": "dupe@example.com", "password": "password123"}
+        )
+        response = self.client.post(
+            "/auth/register", json={"email": "dupe@example.com", "password": "different"}
+        )
         self.assert_bad_request(response, "already exists")
 
     def test_register_invalid_email(self):
         """Test registration with invalid email fails."""
-        response = self.client.post("/auth/register", json={
-            "email": "notanemail",
-            "password": "password123"
-        })
+        response = self.client.post(
+            "/auth/register", json={"email": "notanemail", "password": "password123"}
+        )
         assert response.status_code == 422
 
     def test_register_password_too_short(self):
         """Test registration with short password fails."""
-        response = self.client.post("/auth/register", json={
-            "email": "short@example.com",
-            "password": "short"
-        })
+        response = self.client.post(
+            "/auth/register", json={"email": "short@example.com", "password": "short"}
+        )
         assert response.status_code == 422
 
 
@@ -112,14 +112,12 @@ class TestAuthLogin(BaseTestCase):
 
     def test_login_success(self):
         """Test successful login."""
-        self.client.post("/auth/register", json={
-            "email": "login@example.com",
-            "password": "password123"
-        })
-        response = self.client.post("/auth/login", json={
-            "email": "login@example.com",
-            "password": "password123"
-        })
+        self.client.post(
+            "/auth/register", json={"email": "login@example.com", "password": "password123"}
+        )
+        response = self.client.post(
+            "/auth/login", json={"email": "login@example.com", "password": "password123"}
+        )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -127,22 +125,19 @@ class TestAuthLogin(BaseTestCase):
 
     def test_login_wrong_password(self):
         """Test login with wrong password fails."""
-        self.client.post("/auth/register", json={
-            "email": "wrongpass@example.com",
-            "password": "correct"
-        })
-        response = self.client.post("/auth/login", json={
-            "email": "wrongpass@example.com",
-            "password": "wrong"
-        })
+        self.client.post(
+            "/auth/register", json={"email": "wrongpass@example.com", "password": "correct"}
+        )
+        response = self.client.post(
+            "/auth/login", json={"email": "wrongpass@example.com", "password": "wrong"}
+        )
         assert response.status_code == 401
 
     def test_login_nonexistent_user(self):
         """Test login with nonexistent user fails."""
-        response = self.client.post("/auth/login", json={
-            "email": "nobody@example.com",
-            "password": "password"
-        })
+        response = self.client.post(
+            "/auth/login", json={"email": "nobody@example.com", "password": "password"}
+        )
         assert response.status_code == 401
 
 
@@ -151,15 +146,12 @@ class TestAuthRefresh(BaseTestCase):
 
     def test_refresh_success(self):
         """Test successful token refresh."""
-        reg_response = self.client.post("/auth/register", json={
-            "email": "refresh@example.com",
-            "password": "password123"
-        })
+        reg_response = self.client.post(
+            "/auth/register", json={"email": "refresh@example.com", "password": "password123"}
+        )
         refresh_token = reg_response.json()["refresh_token"]
 
-        response = self.client.post("/auth/refresh", json={
-            "refresh_token": refresh_token
-        })
+        response = self.client.post("/auth/refresh", json={"refresh_token": refresh_token})
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -167,22 +159,17 @@ class TestAuthRefresh(BaseTestCase):
 
     def test_refresh_invalid_token(self):
         """Test refresh with invalid token fails."""
-        response = self.client.post("/auth/refresh", json={
-            "refresh_token": "invalid.token.here"
-        })
+        response = self.client.post("/auth/refresh", json={"refresh_token": "invalid.token.here"})
         assert response.status_code == 401
 
     def test_refresh_with_access_token_fails(self):
         """Test using access token for refresh fails."""
-        reg_response = self.client.post("/auth/register", json={
-            "email": "accessonly@example.com",
-            "password": "password123"
-        })
+        reg_response = self.client.post(
+            "/auth/register", json={"email": "accessonly@example.com", "password": "password123"}
+        )
         access_token = reg_response.json()["access_token"]
 
-        response = self.client.post("/auth/refresh", json={
-            "refresh_token": access_token
-        })
+        response = self.client.post("/auth/refresh", json={"refresh_token": access_token})
         assert response.status_code == 401
 
 
@@ -191,15 +178,12 @@ class TestAuthMe(BaseTestCase):
 
     def test_get_me_success(self):
         """Test getting current user info."""
-        reg_response = self.client.post("/auth/register", json={
-            "email": "me@example.com",
-            "password": "password123"
-        })
+        reg_response = self.client.post(
+            "/auth/register", json={"email": "me@example.com", "password": "password123"}
+        )
         access_token = reg_response.json()["access_token"]
 
-        response = self.client.get("/auth/me", headers={
-            "Authorization": f"Bearer {access_token}"
-        })
+        response = self.client.get("/auth/me", headers={"Authorization": f"Bearer {access_token}"})
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == "me@example.com"
@@ -213,9 +197,9 @@ class TestAuthMe(BaseTestCase):
 
     def test_get_me_invalid_token(self):
         """Test getting current user with invalid token fails."""
-        response = self.client.get("/auth/me", headers={
-            "Authorization": "Bearer invalid.token.here"
-        })
+        response = self.client.get(
+            "/auth/me", headers={"Authorization": "Bearer invalid.token.here"}
+        )
         assert response.status_code == 401
 
 
@@ -229,15 +213,12 @@ class TestProtectedEndpoints(BaseTestCase):
 
     def test_feed_with_auth(self):
         """Test feed endpoint works with authentication."""
-        reg_response = self.client.post("/auth/register", json={
-            "email": "feeduser@example.com",
-            "password": "password123"
-        })
+        reg_response = self.client.post(
+            "/auth/register", json={"email": "feeduser@example.com", "password": "password123"}
+        )
         access_token = reg_response.json()["access_token"]
 
-        response = self.client.get("/feed", headers={
-            "Authorization": f"Bearer {access_token}"
-        })
+        response = self.client.get("/feed", headers={"Authorization": f"Bearer {access_token}"})
         assert response.status_code == 200
 
     def test_subscriptions_requires_auth(self):

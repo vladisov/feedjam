@@ -106,8 +106,12 @@ class TestRankingService(BaseTestCase):
 
         # Use a source type that has points (reddit, hackernews, etc.)
         items = [
-            self._create_feed_item("Popular article", source_name="reddit-r-test", points=1000, views=5000),
-            self._create_feed_item("Unpopular article", source_name="reddit-r-test", points=10, views=50),
+            self._create_feed_item(
+                "Popular article", source_name="reddit-r-test", points=1000, views=5000
+            ),
+            self._create_feed_item(
+                "Unpopular article", source_name="reddit-r-test", points=10, views=50
+            ),
         ]
 
         ranked = self.ranking_service.compute_rank_scores(user.id, items)
@@ -225,9 +229,7 @@ class TestInterestStorage(BaseTestCase):
         """Test creating and retrieving interests."""
         user = self.create_user_direct("test")
 
-        interest = self.interest_storage.create(
-            user.id, UserInterestIn(topic="python", weight=1.5)
-        )
+        interest = self.interest_storage.create(user.id, UserInterestIn(topic="python", weight=1.5))
 
         assert interest.topic == "python"
         assert interest.weight == 1.5
@@ -284,9 +286,7 @@ class TestInterestStorage(BaseTestCase):
         """Test deleting an interest."""
         user = self.create_user_direct("test")
 
-        interest = self.interest_storage.create(
-            user.id, UserInterestIn(topic="python", weight=1.0)
-        )
+        interest = self.interest_storage.create(user.id, UserInterestIn(topic="python", weight=1.0))
 
         result = self.interest_storage.delete(interest.id)
         assert result is True

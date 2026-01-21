@@ -1,24 +1,28 @@
-{$DOMAIN:localhost} {
-    # API routes
+{$DOMAIN} {
+    # API proxy
     handle /api/* {
-        uri strip_prefix /api
         reverse_proxy api:8000
     }
 
-    # Webhook routes
-    handle /webhooks/* {
+    # Webhook endpoint (if used)
+    handle /webhook/* {
         reverse_proxy api:8000
     }
 
-    # Health check
-    handle /health {
-        reverse_proxy api:8000
-    }
-
-    # Frontend static files
+    # Static frontend files
     handle {
         root * /srv
         try_files {path} /index.html
         file_server
     }
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    # Gzip compression
+    encode gzip
 }
