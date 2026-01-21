@@ -20,7 +20,6 @@ export interface ItemStateFlags {
   read: boolean
   star: boolean
   like: boolean
-  dislike: boolean
   hide: boolean
 }
 
@@ -132,7 +131,6 @@ export interface DigestItem {
 
 export interface SearchParams {
   liked?: boolean
-  disliked?: boolean
   starred?: boolean
   read?: boolean
   hidden?: boolean
@@ -168,4 +166,3 @@ export interface RegisterCredentials {
   email: string
   password: string
 }
-

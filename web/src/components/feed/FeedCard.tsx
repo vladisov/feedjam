@@ -1,17 +1,14 @@
 import { forwardRef } from 'react'
 import {
-  ArchiveBoxIcon,
   ArrowTopRightOnSquareIcon,
   BookmarkIcon,
   ChatBubbleLeftIcon,
   EyeIcon,
-  HandThumbDownIcon,
   HandThumbUpIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import {
-  ArchiveBoxIcon as ArchiveBoxIconSolid,
   BookmarkIcon as BookmarkIconSolid,
-  HandThumbDownIcon as HandThumbDownIconSolid,
   HandThumbUpIcon as HandThumbUpIconSolid,
 } from '@heroicons/react/24/solid'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
@@ -63,15 +60,14 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
     isSelected = false,
     onToggleStar,
     onToggleLike,
-    onToggleDislike,
     onMarkRead,
     onToggleHide,
   },
   ref
 ) {
-  const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked, hide: isArchived } = item.state
+  const { read: isRead, star: isStarred, like: isLiked, hide: isHidden } = item.state
 
-  const handleArticleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  function handleArticleClick(e: React.MouseEvent<HTMLAnchorElement>): void {
     e.preventDefault()
     if (item.article_url) {
       window.open(item.article_url, '_blank', 'noopener,noreferrer')
@@ -86,7 +82,8 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
       ref={ref}
       className={cn(
         'group rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/50',
-        isSelected && 'sm:ring-2 sm:ring-primary sm:border-primary'
+        isSelected && 'sm:ring-2 sm:ring-primary sm:border-primary',
+        isHidden && 'opacity-40'
       )}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -114,17 +111,9 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
             onClick={() => onToggleLike?.(item)}
             isActive={isLiked}
             activeColor="text-green-500"
-            title="Like - stories from this source will rank higher"
+            title="Like - more of this"
             OutlineIcon={HandThumbUpIcon}
             SolidIcon={HandThumbUpIconSolid}
-          />
-          <ActionButton
-            onClick={() => onToggleDislike?.(item)}
-            isActive={isDisliked}
-            activeColor="text-red-500"
-            title="Dislike - stories from this source will rank lower"
-            OutlineIcon={HandThumbDownIcon}
-            SolidIcon={HandThumbDownIconSolid}
           />
           <ActionButton
             onClick={() => onToggleStar?.(item)}
@@ -134,16 +123,14 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
             OutlineIcon={BookmarkIcon}
             SolidIcon={BookmarkIconSolid}
           />
-          <button
+          <ActionButton
             onClick={() => onToggleHide?.(item)}
-            className={cn(
-              'flex-shrink-0 rounded p-1 transition-colors hover:bg-secondary',
-              isArchived ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-            )}
-            title={isArchived ? 'Unarchive' : 'Archive'}
-          >
-            {isArchived ? <ArchiveBoxIconSolid className="h-5 w-5" /> : <ArchiveBoxIcon className="h-5 w-5" />}
-          </button>
+            isActive={isHidden}
+            activeColor="text-muted-foreground"
+            title="Dismiss"
+            OutlineIcon={XMarkIcon}
+            SolidIcon={XMarkIcon}
+          />
         </div>
       </div>
 

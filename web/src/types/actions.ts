@@ -12,7 +12,6 @@ export type FeedItemAction = (item: FeedItem) => void
 export interface FeedItemActions {
   onToggleStar?: FeedItemAction
   onToggleLike?: FeedItemAction
-  onToggleDislike?: FeedItemAction
   onMarkRead?: FeedItemAction
   onToggleHide?: FeedItemAction
 }

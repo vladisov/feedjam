@@ -246,9 +246,6 @@ export const api = {
   toggleLike: (itemId: number): Promise<{ liked: boolean }> =>
     post(`${API_URL}/feed/items/${itemId}/like`),
 
-  toggleDislike: (itemId: number): Promise<{ disliked: boolean }> =>
-    post(`${API_URL}/feed/items/${itemId}/dislike`),
-
   toggleStar: (itemId: number): Promise<{ starred: boolean }> =>
     post(`${API_URL}/feed/items/${itemId}/star`),
 
@@ -263,8 +260,7 @@ export const api = {
 
   searchItems: (params: SearchParams): Promise<SearchResultItem[]> => {
     const searchParams = new URLSearchParams()
-    const entries = Object.entries(params) as [keyof SearchParams, SearchParams[keyof SearchParams]][]
-    for (const [key, value] of entries) {
+    for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null && value !== '') {
         searchParams.set(key, String(value))
       }

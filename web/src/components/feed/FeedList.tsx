@@ -15,7 +15,6 @@ export function FeedList({
   selectedIndex = -1,
   onToggleStar,
   onToggleLike,
-  onToggleDislike,
   onMarkRead,
   onToggleHide,
 }: FeedListProps): React.ReactElement {
@@ -49,7 +48,6 @@ export function FeedList({
           isSelected={index === selectedIndex}
           onToggleStar={onToggleStar}
           onToggleLike={onToggleLike}
-          onToggleDislike={onToggleDislike}
           onMarkRead={onMarkRead}
           onToggleHide={onToggleHide}
         />

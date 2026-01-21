@@ -55,11 +55,15 @@ class UserItemStateStorage:
         self.db.commit()
 
     def toggle_liked(self, user_id: int, feed_item_id: int) -> tuple[bool, str | None]:
-        """Toggle liked state. Returns (new_liked_state, source_name)."""
+        """Toggle liked state. Returns (new_liked_state, source_name).
+
+        Like clears hidden (mutually exclusive) since liking is a positive signal.
+        """
         state = self.get_or_create(user_id, feed_item_id)
-        if state.disliked:
-            state.disliked = False
         state.liked = not state.liked
+        if state.liked:
+            # Like clears hidden (mutually exclusive)
+            state.hidden = False
         self.db.commit()
         source_name = self._get_source_name(feed_item_id)
         return state.liked, source_name
@@ -81,18 +85,23 @@ class UserItemStateStorage:
         self.db.commit()
         return state.starred
 
-    def toggle_hidden(self, user_id: int, feed_item_id: int) -> bool:
-        """Toggle hidden state. Returns new_hidden_state.
+    def toggle_hidden(self, user_id: int, feed_item_id: int) -> tuple[bool, str | None]:
+        """Toggle hidden state. Returns (new_hidden_state, source_name).
 
+        Hide acts as a negative signal for ranking. When hiding, clears liked.
         When unhiding, also marks the item as unread to give it a fresh start.
         """
         state = self.get_or_create(user_id, feed_item_id)
         state.hidden = not state.hidden
-        # When unhiding, mark as unread so item appears fresh
-        if not state.hidden:
+        if state.hidden:
+            # Hide clears liked (mutually exclusive)
+            state.liked = False
+        else:
+            # When unhiding, mark as unread so item appears fresh
             state.read = False
         self.db.commit()
-        return state.hidden
+        source_name = self._get_source_name(feed_item_id)
+        return state.hidden, source_name
 
     def _get_source_name(self, feed_item_id: int) -> str | None:
         """Get source_name for a feed item."""

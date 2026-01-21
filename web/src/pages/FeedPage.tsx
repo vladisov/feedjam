@@ -26,11 +26,16 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'source', label: 'Source A-Z' },
 ]
 
-function getStored<T>(key: string, defaultValue: T, parse?: (v: string) => T): T {
+function getStoredString(key: string, defaultValue: string): string {
+  if (typeof window === 'undefined') return defaultValue
+  return localStorage.getItem(key) ?? defaultValue
+}
+
+function getStoredBoolean(key: string, defaultValue: boolean): boolean {
   if (typeof window === 'undefined') return defaultValue
   const stored = localStorage.getItem(key)
   if (stored === null) return defaultValue
-  return parse ? parse(stored) : (stored as unknown as T)
+  return stored !== 'false'
 }
 
 function getDateValue(item: FeedItem): number {
@@ -98,21 +103,31 @@ function toFeedItem(item: SearchResultItem): FeedItem {
 
 export default function FeedPage(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('')
-  const [showSummaries, setShowSummaries] = useState(() => getStored('feedShowSummaries', true, (v) => v !== 'false'))
-  const [sortOption, setSortOption] = useState<SortOption>(() => getStored('feedSortOption', 'newest' as SortOption))
+  const [showSummaries, setShowSummaries] = useState(() => getStoredBoolean('feedShowSummaries', true))
+  const [sortOption, setSortOption] = useState<SortOption>(() => getStoredString('feedSortOption', 'newest') as SortOption)
   const [activeTab, setActiveTab] = useState<FeedTab>('feed')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [localUpdates, setLocalUpdates] = useState<Record<number, Partial<FeedItem['state']>>>({})
   const { items: rawItems, isLoading, error, refetch } = useFeedQuery()
   const loadMoreRef = useRef<HTMLDivElement>(null)
+  const prevRawItemsRef = useRef(rawItems)
 
-  // Apply local state updates to items
+  // Clear local updates when feed data changes (on refetch)
+  useEffect(() => {
+    if (rawItems !== prevRawItemsRef.current && rawItems.length > 0) {
+      setLocalUpdates({})
+      prevRawItemsRef.current = rawItems
+    }
+  }, [rawItems])
+
+  // Apply local state updates to items, filtering out server-hidden items without local updates
   const items = useMemo(() => {
-    return rawItems.map((item) => {
-      const updates = localUpdates[item.id]
-      if (!updates) return item
-      return { ...item, state: { ...item.state, ...updates } }
-    })
+    return rawItems
+      .filter((item) => !item.state.hide || localUpdates[item.id])
+      .map((item) => {
+        const updates = localUpdates[item.id]
+        return updates ? { ...item, state: { ...item.state, ...updates } } : item
+      })
   }, [rawItems, localUpdates])
 
   // Digest query
@@ -134,32 +149,29 @@ export default function FeedPage(): React.ReactElement {
     enabled: needsServerSearch && activeTab === 'feed',
   })
 
-  const updateItemState = (itemId: number, updates: Partial<FeedItem['state']>) => {
+  function updateItemState(itemId: number, updates: Partial<FeedItem['state']>): void {
     setLocalUpdates((prev) => ({
       ...prev,
       [itemId]: { ...prev[itemId], ...updates },
     }))
   }
 
-  const handleToggleLike = (item: FeedItem) => {
-    const newLike = !item.state.like
-    updateItemState(item.id, { like: newLike, dislike: false })
+  function handleToggleLike(item: FeedItem): void {
+    updateItemState(item.id, { like: !item.state.like, hide: false })
     api.toggleLike(item.feed_item_id)
   }
-  const handleToggleDislike = (item: FeedItem) => {
-    const newDislike = !item.state.dislike
-    updateItemState(item.id, { dislike: newDislike, like: false })
-    api.toggleDislike(item.feed_item_id)
-  }
-  const handleToggleStar = (item: FeedItem) => {
+
+  function handleToggleStar(item: FeedItem): void {
     updateItemState(item.id, { star: !item.state.star })
     api.toggleStar(item.feed_item_id)
   }
-  const handleMarkRead = (item: FeedItem) => {
+
+  function handleMarkRead(item: FeedItem): void {
     api.markRead(item.feed_item_id)
   }
-  const handleToggleHide = (item: FeedItem) => {
-    updateItemState(item.id, { hide: !item.state.hide })
+
+  function handleToggleHide(item: FeedItem): void {
+    updateItemState(item.id, { hide: !item.state.hide, like: false })
     api.toggleHide(item.feed_item_id)
   }
 
@@ -183,10 +195,7 @@ export default function FeedPage(): React.ReactElement {
     setVisibleCount(PAGE_SIZE) // Reset pagination on sort change
   }
 
-  // Paginated items for display
-  const visibleItems = useMemo(() => {
-    return filteredItems.slice(0, visibleCount)
-  }, [filteredItems, visibleCount])
+  const visibleItems = useMemo(() => filteredItems.slice(0, visibleCount), [filteredItems, visibleCount])
 
   const hasMore = visibleCount < filteredItems.length
 
@@ -225,17 +234,13 @@ export default function FeedPage(): React.ReactElement {
     items: visibleItems,
     onToggleStar: handleToggleStar,
     onToggleLike: handleToggleLike,
-    onToggleDislike: handleToggleDislike,
     onMarkRead: handleMarkRead,
     onToggleHide: handleToggleHide,
     onRefresh: () => refetch(),
     enabled: true,
   })
 
-  // Count for All tab (non-archived items)
-  const totalCount = useMemo(() => {
-    return items.filter((item) => !item.state.hide).length
-  }, [items])
+  const totalCount = useMemo(() => items.filter((item) => !item.state.hide).length, [items])
 
   function toggleShowSummaries(): void {
     const newValue = !showSummaries
@@ -327,7 +332,6 @@ export default function FeedPage(): React.ReactElement {
         selectedIndex={selectedIndex}
         onToggleStar={handleToggleStar}
         onToggleLike={handleToggleLike}
-        onToggleDislike={handleToggleDislike}
         onMarkRead={handleMarkRead}
         onToggleHide={handleToggleHide}
       />
