@@ -130,11 +130,10 @@ export default function FeedPage(): React.ReactElement {
       })
   }, [rawItems, localUpdates])
 
-  // Digest query
+  // Digest query - load upfront for instant tab switching
   const digestQuery = useQuery({
     queryKey: ['digest'],
     queryFn: () => api.getDigest(),
-    enabled: activeTab === 'digest',
   })
 
   // Parse search query to check if server search is needed
@@ -179,7 +178,7 @@ export default function FeedPage(): React.ReactElement {
   const filteredItems = useMemo(() => {
     let result: FeedItem[]
     if (activeTab === 'digest') {
-      result = digestQuery.data ?? []
+      result = applySearch(digestQuery.data ?? [], searchQuery)
     } else if (needsServerSearch) {
       result = (serverSearch.data ?? []).map(toFeedItem)
     } else {
@@ -249,9 +248,8 @@ export default function FeedPage(): React.ReactElement {
   }
 
   const isSearching = needsServerSearch && activeTab === 'feed' && serverSearch.isLoading
-  const isLoadingDigest = activeTab === 'digest' && digestQuery.isLoading
 
-  if ((isLoading && items.length === 0) || isSearching || isLoadingDigest) {
+  if ((isLoading && items.length === 0) || isSearching) {
     return <PageLoader />
   }
 
@@ -270,7 +268,7 @@ export default function FeedPage(): React.ReactElement {
   return (
     <div>
       {/* Tabs + Actions */}
-      <div className="mb-4 flex items-center justify-between border-b border-border">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex">
           <TabButton isActive={activeTab === 'feed'} onClick={() => setActiveTab('feed')}>
             Feed
@@ -302,28 +300,26 @@ export default function FeedPage(): React.ReactElement {
         </div>
       </div>
 
-      {/* Search and Sort (only show for Feed tab) */}
-      {activeTab === 'feed' && (
-        <div className="mb-4 flex gap-2">
-          <div className="min-w-0 flex-1">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
-          </div>
-          <div className="relative flex-shrink-0">
-            <select
-              value={sortOption}
-              onChange={(e) => handleSortChange(e.target.value as SortOption)}
-              className="h-10 appearance-none rounded-lg border border-border bg-card pl-2 pr-7 sm:pl-3 sm:pr-8 text-sm text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronUpDownIcon className="pointer-events-none absolute right-1.5 sm:right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          </div>
+      {/* Search and Sort */}
+      <div className="mb-4 flex gap-2">
+        <div className="min-w-0 flex-1">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
-      )}
+        <div className="relative flex-shrink-0">
+          <select
+            value={sortOption}
+            onChange={(e) => handleSortChange(e.target.value as SortOption)}
+            className="h-10 appearance-none rounded-lg border border-border bg-card pl-2 pr-7 sm:pl-3 sm:pr-8 text-sm text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <ChevronUpDownIcon className="pointer-events-none absolute right-1.5 sm:right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        </div>
+      </div>
 
       {/* Feed list */}
       <FeedList

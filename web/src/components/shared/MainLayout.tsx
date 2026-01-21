@@ -30,8 +30,8 @@ export function MainLayout() {
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between gap-2 px-3 sm:px-4">
           <h1 className="flex-shrink-0 text-lg sm:text-xl font-bold text-foreground">FeedJam</h1>
-          <div className="flex items-center gap-1 sm:gap-4 overflow-hidden">
-            <nav className="flex items-center">
+          <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
+            <nav className="flex items-center gap-1">
               {navItems.map(({ to, label, icon: Icon }) => (
                 <NavLink
                   key={to}
@@ -50,7 +50,7 @@ export function MainLayout() {
                 </NavLink>
               ))}
             </nav>
-            <div className="flex flex-shrink-0 items-center gap-2 border-l border-border pl-2 sm:pl-4">
+            <div className="flex flex-shrink-0 items-center gap-2">
               <span className="hidden text-sm text-muted-foreground md:inline truncate max-w-[150px]">
                 {user?.email}
               </span>
