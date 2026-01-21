@@ -1,10 +1,10 @@
 {$DOMAIN} {
-    # API proxy
-    handle /api/* {
+    # API proxy - strip /api prefix before forwarding
+    handle_path /api/* {
         reverse_proxy api:8000
     }
 
-    # Webhook endpoint (if used)
+    # Webhook endpoint
     handle /webhook/* {
         reverse_proxy api:8000
     }
