@@ -71,9 +71,7 @@ class FeedStorage:
         results = self.db.execute(items_stmt).all()
 
         # Build response with mapped state
-        feed_items = [
-            self._build_user_feed_item_out(item, state) for item, state in results
-        ]
+        feed_items = [self._build_user_feed_item_out(item, state) for item, state in results]
 
         return UserFeedOut(
             id=user_feed.id,

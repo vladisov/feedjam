@@ -130,9 +130,7 @@ class FeedService:
 
     def toggle_like(self, user_id: int, feed_item_id: int) -> dict:
         """Toggle like for a feed item and update like history."""
-        is_liked, source_name = self.user_item_state_storage.toggle_liked(
-            user_id, feed_item_id
-        )
+        is_liked, source_name = self.user_item_state_storage.toggle_liked(user_id, feed_item_id)
         if source_name:
             self._update_like_history(user_id, source_name, is_liked, is_like=True)
         return {"liked": is_liked}
