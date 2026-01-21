@@ -19,9 +19,7 @@ depends_on = None
 
 def upgrade() -> None:
     # Drop the state_id foreign key and column from user_feed_items
-    op.drop_constraint(
-        "user_feed_items_state_id_fkey", "user_feed_items", type_="foreignkey"
-    )
+    op.drop_constraint("user_feed_items_state_id_fkey", "user_feed_items", type_="foreignkey")
     op.drop_column("user_feed_items", "state_id")
 
     # Drop the user_feed_item_states table

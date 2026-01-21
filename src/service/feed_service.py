@@ -154,9 +154,7 @@ class FeedService:
 
         Hide acts as a negative signal for ranking (decreases source affinity).
         """
-        is_hidden, source_name = self.user_item_state_storage.toggle_hidden(
-            user_id, feed_item_id
-        )
+        is_hidden, source_name = self.user_item_state_storage.toggle_hidden(user_id, feed_item_id)
         if source_name:
             self._update_like_history(user_id, source_name, is_hidden, is_like=False)
         return {"hidden": is_hidden}

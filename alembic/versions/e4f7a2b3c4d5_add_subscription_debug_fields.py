@@ -5,6 +5,7 @@ Revises: d3e6f9a1b2c3
 Create Date: 2026-01-20
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -20,7 +21,9 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.add_column("subscriptions", sa.Column("last_error", sa.String(500), nullable=True))
-    op.add_column("subscriptions", sa.Column("item_count", sa.Integer(), nullable=True, server_default="0"))
+    op.add_column(
+        "subscriptions", sa.Column("item_count", sa.Integer(), nullable=True, server_default="0")
+    )
 
 
 def downgrade() -> None:

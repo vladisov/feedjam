@@ -5,6 +5,7 @@ Revises: 06224794abbf
 Create Date: 2025-01-17
 
 """
+
 import sqlalchemy as sa
 
 from alembic import op
@@ -26,8 +27,11 @@ def upgrade() -> None:
         sa.Column("weight", sa.Float(), nullable=False, server_default="1.0"),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ),
-        sa.PrimaryKeyConstraint("id")
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_user_interests_id"), "user_interests", ["id"], unique=False)
     op.create_index(op.f("ix_user_interests_user_id"), "user_interests", ["user_id"], unique=False)
@@ -42,15 +46,24 @@ def upgrade() -> None:
         sa.Column("dislike_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ),
-        sa.PrimaryKeyConstraint("id")
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_user_like_history_id"), "user_like_history", ["id"], unique=False)
-    op.create_index(op.f("ix_user_like_history_user_id"), "user_like_history", ["user_id"], unique=False)
-    op.create_index(op.f("ix_user_like_history_source_name"), "user_like_history", ["source_name"], unique=False)
+    op.create_index(
+        op.f("ix_user_like_history_user_id"), "user_like_history", ["user_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_user_like_history_source_name"), "user_like_history", ["source_name"], unique=False
+    )
 
     # Add rank_score column to user_feed_items
-    op.add_column("user_feed_items", sa.Column("rank_score", sa.Float(), nullable=False, server_default="0.0"))
+    op.add_column(
+        "user_feed_items", sa.Column("rank_score", sa.Float(), nullable=False, server_default="0.0")
+    )
 
 
 def downgrade() -> None:
