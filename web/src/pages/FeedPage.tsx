@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { FeedList } from '@/components/feed/FeedList'
@@ -7,13 +7,13 @@ import { SearchBar } from '@/components/feed/SearchBar'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
 import { KeyboardShortcutsHelp } from '@/components/shared/KeyboardShortcutsHelp'
-import { ArrowPathIcon, Bars3BottomLeftIcon, EyeSlashIcon, CheckIcon, SparklesIcon, QuestionMarkCircleIcon, ChevronUpDownIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, Bars3BottomLeftIcon, SparklesIcon, QuestionMarkCircleIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { applySearch, parseSearchQuery, requiresServerSearch, toSearchParams } from '@/lib/search'
 import type { FeedItem, SearchResultItem } from '@/types/feed'
 
-type FeedTab = 'all' | 'digest'
+type FeedTab = 'feed' | 'digest'
 type SortOption = 'newest' | 'oldest' | 'score' | 'points' | 'source'
 
 const PAGE_SIZE = 20
@@ -77,26 +77,6 @@ function TabButton({ isActive, onClick, children }: TabButtonProps): React.React
   )
 }
 
-function useInvalidateAll() {
-  const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries({ queryKey: ['feed'] })
-    queryClient.invalidateQueries({ queryKey: ['search'] })
-    queryClient.invalidateQueries({ queryKey: ['digest'] })
-  }
-}
-
-function useFeedItemMutation(
-  mutationFn: (item: FeedItem) => Promise<unknown>
-): (item: FeedItem) => void {
-  const invalidateAll = useInvalidateAll()
-  const mutation = useMutation({
-    mutationFn,
-    onSuccess: invalidateAll,
-  })
-  return mutation.mutate
-}
-
 function toFeedItem(item: SearchResultItem): FeedItem {
   return {
     id: item.id,
@@ -120,13 +100,20 @@ export default function FeedPage(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSummaries, setShowSummaries] = useState(() => getStored('feedShowSummaries', true, (v) => v !== 'false'))
   const [sortOption, setSortOption] = useState<SortOption>(() => getStored('feedSortOption', 'newest' as SortOption))
-  const [activeTab, setActiveTab] = useState<FeedTab>('all')
+  const [activeTab, setActiveTab] = useState<FeedTab>('feed')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const { items, isLoading, error, refetch } = useFeedQuery()
+  const [localUpdates, setLocalUpdates] = useState<Record<number, Partial<FeedItem['state']>>>({})
+  const { items: rawItems, isLoading, error, refetch } = useFeedQuery()
   const loadMoreRef = useRef<HTMLDivElement>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
-  const queryClient = useQueryClient()
+
+  // Apply local state updates to items
+  const items = useMemo(() => {
+    return rawItems.map((item) => {
+      const updates = localUpdates[item.id]
+      if (!updates) return item
+      return { ...item, state: { ...item.state, ...updates } }
+    })
+  }, [rawItems, localUpdates])
 
   // Digest query
   const digestQuery = useQuery({
@@ -140,28 +127,41 @@ export default function FeedPage(): React.ReactElement {
   const needsServerSearch = useMemo(() => requiresServerSearch(parsedSearch), [parsedSearch])
   const searchParams = useMemo(() => toSearchParams(parsedSearch), [parsedSearch])
 
-  // Server-side search (only enabled when state filters are used)
+  // Server-side search (only enabled when state filters are used on Feed tab)
   const serverSearch = useQuery({
     queryKey: ['search', searchParams],
     queryFn: () => api.searchItems(searchParams),
-    enabled: needsServerSearch,
+    enabled: needsServerSearch && activeTab === 'feed',
   })
 
-  const handleToggleLike = useFeedItemMutation((item) =>
+  const updateItemState = (itemId: number, updates: Partial<FeedItem['state']>) => {
+    setLocalUpdates((prev) => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], ...updates },
+    }))
+  }
+
+  const handleToggleLike = (item: FeedItem) => {
+    const newLike = !item.state.like
+    updateItemState(item.id, { like: newLike, dislike: false })
     api.toggleLike(item.feed_item_id)
-  )
-  const handleToggleDislike = useFeedItemMutation((item) =>
+  }
+  const handleToggleDislike = (item: FeedItem) => {
+    const newDislike = !item.state.dislike
+    updateItemState(item.id, { dislike: newDislike, like: false })
     api.toggleDislike(item.feed_item_id)
-  )
-  const handleToggleStar = useFeedItemMutation((item) =>
+  }
+  const handleToggleStar = (item: FeedItem) => {
+    updateItemState(item.id, { star: !item.state.star })
     api.toggleStar(item.feed_item_id)
-  )
-  const handleMarkRead = useFeedItemMutation((item) =>
+  }
+  const handleMarkRead = (item: FeedItem) => {
     api.markRead(item.feed_item_id)
-  )
-  const handleToggleHide = useFeedItemMutation((item) =>
+  }
+  const handleToggleHide = (item: FeedItem) => {
+    updateItemState(item.id, { hide: !item.state.hide })
     api.toggleHide(item.feed_item_id)
-  )
+  }
 
   // Get filtered items based on active tab (needed for keyboard shortcuts)
   const filteredItems = useMemo(() => {
@@ -220,19 +220,6 @@ export default function FeedPage(): React.ReactElement {
     setVisibleCount(PAGE_SIZE)
   }, [searchQuery, activeTab])
 
-  // Close menu on click outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false)
-      }
-    }
-    if (menuOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [menuOpen])
-
   // Keyboard shortcuts (use visible items for navigation)
   const { selectedIndex, showHelp, setShowHelp } = useKeyboardShortcuts({
     items: visibleItems,
@@ -245,29 +232,9 @@ export default function FeedPage(): React.ReactElement {
     enabled: true,
   })
 
-  const hideReadMutation = useMutation({
-    mutationFn: () => api.hideRead(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed'] })
-    },
-  })
-
-  const markAllReadMutation = useMutation({
-    mutationFn: () => api.markAllRead(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed'] })
-    },
-  })
-
-  // Counts for action buttons (based on visible non-hidden items)
-  const { totalCount, readCount, unreadCount } = useMemo(() => {
-    const visible = items.filter((item) => !item.state.hide)
-    const read = visible.filter((item) => item.state.read).length
-    return {
-      totalCount: visible.length,
-      readCount: read,
-      unreadCount: visible.length - read,
-    }
+  // Count for All tab (non-archived items)
+  const totalCount = useMemo(() => {
+    return items.filter((item) => !item.state.hide).length
   }, [items])
 
   function toggleShowSummaries(): void {
@@ -276,7 +243,7 @@ export default function FeedPage(): React.ReactElement {
     localStorage.setItem('feedShowSummaries', String(newValue))
   }
 
-  const isSearching = needsServerSearch && serverSearch.isLoading
+  const isSearching = needsServerSearch && activeTab === 'feed' && serverSearch.isLoading
   const isLoadingDigest = activeTab === 'digest' && digestQuery.isLoading
 
   if ((isLoading && items.length === 0) || isSearching || isLoadingDigest) {
@@ -300,8 +267,8 @@ export default function FeedPage(): React.ReactElement {
       {/* Tabs + Actions */}
       <div className="mb-4 flex items-center justify-between border-b border-border">
         <div className="flex">
-          <TabButton isActive={activeTab === 'all'} onClick={() => setActiveTab('all')}>
-            All
+          <TabButton isActive={activeTab === 'feed'} onClick={() => setActiveTab('feed')}>
+            Feed
             <span className="ml-1.5 text-xs text-muted-foreground">{totalCount}</span>
           </TabButton>
           <TabButton isActive={activeTab === 'digest'} onClick={() => setActiveTab('digest')}>
@@ -327,53 +294,11 @@ export default function FeedPage(): React.ReactElement {
           >
             <ArrowPathIcon className="h-4 w-4" />
           </Button>
-          {activeTab === 'all' && (unreadCount > 0 || readCount > 0) && (
-            <div ref={menuRef} className="relative">
-              <Button
-                onClick={() => setMenuOpen(!menuOpen)}
-                variant="ghost"
-                size="sm"
-                title="More actions"
-              >
-                <EllipsisVerticalIcon className="h-4 w-4" />
-              </Button>
-              {menuOpen && (
-                <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-lg border border-border bg-card py-1 shadow-lg">
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={() => {
-                        markAllReadMutation.mutate()
-                        setMenuOpen(false)
-                      }}
-                      disabled={markAllReadMutation.isPending}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50"
-                    >
-                      <CheckIcon className="h-4 w-4" />
-                      Mark all as read ({unreadCount})
-                    </button>
-                  )}
-                  {readCount > 0 && (
-                    <button
-                      onClick={() => {
-                        hideReadMutation.mutate()
-                        setMenuOpen(false)
-                      }}
-                      disabled={hideReadMutation.isPending}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50"
-                    >
-                      <EyeSlashIcon className="h-4 w-4" />
-                      Hide read items ({readCount})
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Search and Sort (only show for All tab) */}
-      {activeTab === 'all' && (
+      {/* Search and Sort (only show for Feed tab) */}
+      {activeTab === 'feed' && (
         <div className="mb-4 flex gap-2">
           <div className="min-w-0 flex-1">
             <SearchBar value={searchQuery} onChange={setSearchQuery} />

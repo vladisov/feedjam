@@ -6,7 +6,7 @@ export interface SearchFilters {
   read?: boolean
   unread?: boolean
   saved?: boolean
-  hidden?: boolean
+  archived?: boolean
 }
 
 export interface ParsedSearch {
@@ -35,7 +35,7 @@ export function toSearchParams(parsed: ParsedSearch): SearchParams {
   if (parsed.filters.read) params.read = true
   if (parsed.filters.unread) params.read = false // unread = read:false
   if (parsed.filters.saved) params.starred = true
-  if (parsed.filters.hidden) params.hidden = true
+  if (parsed.filters.archived) params.hidden = true // archived maps to hidden in API
 
   if (parsed.textTerms.length > 0) {
     params.text = parsed.textTerms.join(' ')
@@ -48,7 +48,7 @@ export function toSearchParams(parsed: ParsedSearch): SearchParams {
   return params
 }
 
-const IS_FILTERS = ['liked', 'disliked', 'read', 'unread', 'saved', 'hidden'] as const
+const IS_FILTERS = ['liked', 'disliked', 'read', 'unread', 'saved', 'archived'] as const
 
 function removeQuotes(str: string): string {
   return str.replace(/^"|"$/g, '')
@@ -102,7 +102,7 @@ function matchesFilters(item: FeedItem, filters: SearchFilters): boolean {
   if (filters.read && !item.state.read) return false
   if (filters.unread && item.state.read) return false
   if (filters.saved && !item.state.star) return false
-  if (filters.hidden && !item.state.hide) return false
+  if (filters.archived && !item.state.hide) return false
   return true
 }
 
@@ -132,8 +132,8 @@ export function applySearch(items: FeedItem[], query: string): FeedItem[] {
   }
 
   return items.filter((item) => {
-    // Exclude hidden items unless explicitly searching for them
-    if (!parsed.filters.hidden && item.state.hide) return false
+    // Exclude archived items unless explicitly searching for them
+    if (!parsed.filters.archived && item.state.hide) return false
 
     return (
       matchesFilters(item, parsed.filters) &&

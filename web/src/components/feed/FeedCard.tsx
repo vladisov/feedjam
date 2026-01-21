@@ -1,14 +1,15 @@
 import { forwardRef } from 'react'
 import {
+  ArchiveBoxIcon,
   ArrowTopRightOnSquareIcon,
   BookmarkIcon,
   ChatBubbleLeftIcon,
   EyeIcon,
-  EyeSlashIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
 import {
+  ArchiveBoxIcon as ArchiveBoxIconSolid,
   BookmarkIcon as BookmarkIconSolid,
   HandThumbDownIcon as HandThumbDownIconSolid,
   HandThumbUpIcon as HandThumbUpIconSolid,
@@ -68,7 +69,7 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
   },
   ref
 ) {
-  const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked, hide: isHidden } = item.state
+  const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked, hide: isArchived } = item.state
 
   const handleArticleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
@@ -85,7 +86,6 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
       ref={ref}
       className={cn(
         'group rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/50',
-        isRead && 'opacity-60',
         isSelected && 'sm:ring-2 sm:ring-primary sm:border-primary'
       )}
     >
@@ -98,13 +98,7 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
             className="group/link inline-flex items-start gap-1"
             onClick={handleArticleClick}
           >
-            <h3
-              className={cn(
-                'text-sm sm:text-base font-medium leading-snug break-words',
-                isRead ? 'text-feed-read' : 'text-foreground',
-                'group-hover/link:text-feed-unread'
-              )}
-            >
+            <h3 className="text-sm sm:text-base font-medium leading-snug break-words text-foreground group-hover/link:text-primary">
               {item.title}
             </h3>
             <ArrowTopRightOnSquareIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/link:opacity-100" />
@@ -142,10 +136,13 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
           />
           <button
             onClick={() => onToggleHide?.(item)}
-            className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title={isHidden ? 'Unhide' : 'Hide'}
+            className={cn(
+              'flex-shrink-0 rounded p-1 transition-colors hover:bg-secondary',
+              isArchived ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+            )}
+            title={isArchived ? 'Unarchive' : 'Archive'}
           >
-            {isHidden ? <EyeIcon className="h-5 w-5" /> : <EyeSlashIcon className="h-5 w-5" />}
+            {isArchived ? <ArchiveBoxIconSolid className="h-5 w-5" /> : <ArchiveBoxIcon className="h-5 w-5" />}
           </button>
         </div>
       </div>
