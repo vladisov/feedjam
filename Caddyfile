@@ -5,7 +5,7 @@
     }
 
     # Webhook endpoint
-    handle /webhook/* {
+    handle /webhooks/* {
         reverse_proxy api:8000
     }
 
