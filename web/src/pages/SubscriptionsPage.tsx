@@ -87,17 +87,17 @@ export default function SubscriptionsPage(): React.ReactElement {
       </div>
 
       {/* Add subscription form */}
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className="flex gap-2">
+      <form onSubmit={handleSubmit} className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="url"
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             placeholder="Enter RSS feed URL..."
-            className="flex-1 rounded-lg border border-input bg-background px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full sm:flex-1 rounded-lg border border-input bg-background px-3 sm:px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             required
           />
-          <Button type="submit" disabled={isAdding || !newUrl.trim()}>
+          <Button type="submit" disabled={isAdding || !newUrl.trim()} className="flex-shrink-0">
             <PlusIcon className="mr-2 h-4 w-4" />
             Add
           </Button>
@@ -126,34 +126,35 @@ export default function SubscriptionsPage(): React.ReactElement {
             <div
               key={sub.id}
               className={cn(
-                'flex items-center justify-between rounded-lg border bg-card p-4',
+                'flex items-start sm:items-center justify-between gap-2 rounded-lg border bg-card p-3 sm:p-4',
                 getHealthStatus(sub.last_run, sub.created_at) === 'error'
                   ? 'border-red-500/50'
                   : 'border-border'
               )}
             >
-              <div className="flex items-center gap-3">
-                <HealthIndicator subscription={sub} />
+              <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">
+                <div className="mt-1 sm:mt-0">
+                  <HealthIndicator subscription={sub} />
+                </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">
+                  <p className="truncate font-medium text-foreground text-sm sm:text-base">
                     {sub.source_name}
                   </p>
-                  <p className="truncate text-sm text-muted-foreground">
+                  <p className="truncate text-xs sm:text-sm text-muted-foreground">
                     {sub.resource_url}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Added {formatDate(sub.created_at)}
-                    {sub.last_run && ` · Last fetched ${formatDate(sub.last_run)}`}
+                    {formatDate(sub.created_at)}
                     {sub.item_count > 0 && ` · ${sub.item_count} items`}
                   </p>
                   {sub.last_error && (
-                    <p className="mt-1 text-xs text-red-500" title={sub.last_error}>
-                      Error: {sub.last_error.slice(0, 100)}{sub.last_error.length > 100 ? '...' : ''}
+                    <p className="mt-1 text-xs text-red-500 truncate" title={sub.last_error}>
+                      {sub.last_error.slice(0, 60)}{sub.last_error.length > 60 ? '...' : ''}
                     </p>
                   )}
                 </div>
               </div>
-              <div className="ml-4 flex items-center gap-1">
+              <div className="flex flex-shrink-0 items-center gap-1">
                 <Button
                   variant="ghost"
                   size="sm"

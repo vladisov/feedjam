@@ -5,9 +5,6 @@ from sqlalchemy.orm import Session
 
 from model.feed import FeedItem
 from model.user_item_state import UserItemState
-from utils.logger import get_logger
-
-logger = get_logger(__name__)
 
 
 class UserItemStateStorage:
@@ -57,12 +54,100 @@ class UserItemStateStorage:
         state.hidden = value
         self.db.commit()
 
+    def toggle_liked(self, user_id: int, feed_item_id: int) -> tuple[bool, str | None]:
+        """Toggle liked state. Returns (new_liked_state, source_name)."""
+        state = self.get_or_create(user_id, feed_item_id)
+        if state.disliked:
+            state.disliked = False
+        state.liked = not state.liked
+        self.db.commit()
+        source_name = self._get_source_name(feed_item_id)
+        return state.liked, source_name
+
+    def toggle_disliked(self, user_id: int, feed_item_id: int) -> tuple[bool, str | None]:
+        """Toggle disliked state. Returns (new_disliked_state, source_name)."""
+        state = self.get_or_create(user_id, feed_item_id)
+        if state.liked:
+            state.liked = False
+        state.disliked = not state.disliked
+        self.db.commit()
+        source_name = self._get_source_name(feed_item_id)
+        return state.disliked, source_name
+
+    def toggle_starred(self, user_id: int, feed_item_id: int) -> bool:
+        """Toggle starred state. Returns new_starred_state."""
+        state = self.get_or_create(user_id, feed_item_id)
+        state.starred = not state.starred
+        self.db.commit()
+        return state.starred
+
+    def toggle_hidden(self, user_id: int, feed_item_id: int) -> bool:
+        """Toggle hidden state. Returns new_hidden_state.
+
+        When unhiding, also marks the item as unread to give it a fresh start.
+        """
+        state = self.get_or_create(user_id, feed_item_id)
+        state.hidden = not state.hidden
+        # When unhiding, mark as unread so item appears fresh
+        if not state.hidden:
+            state.read = False
+        self.db.commit()
+        return state.hidden
+
+    def _get_source_name(self, feed_item_id: int) -> str | None:
+        """Get source_name for a feed item."""
+        stmt = select(FeedItem.source_name).where(FeedItem.id == feed_item_id)
+        return self.db.execute(stmt).scalar_one_or_none()
+
     def get_read_item_ids(self, user_id: int) -> set[int]:
         """Get all feed_item_ids that user has read."""
         stmt = select(UserItemState.feed_item_id).where(
             and_(UserItemState.user_id == user_id, UserItemState.read.is_(True))
         )
         return set(self.db.execute(stmt).scalars().all())
+
+    def get_active_feed_item_ids(self, user_id: int) -> list[int]:
+        """Get feed_item_ids from the user's active feed."""
+        from model.user_feed import UserFeed, UserFeedItem
+
+        stmt = (
+            select(UserFeedItem.feed_item_id)
+            .join(UserFeed)
+            .where(and_(UserFeed.user_id == user_id, UserFeed.is_active == True))
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
+    def get_read_unhidden_item_ids(self, user_id: int, feed_item_ids: list[int]) -> list[int]:
+        """Get feed_item_ids that are read but not hidden."""
+        if not feed_item_ids:
+            return []
+        stmt = select(UserItemState.feed_item_id).where(
+            and_(
+                UserItemState.user_id == user_id,
+                UserItemState.feed_item_id.in_(feed_item_ids),
+                UserItemState.read == True,
+                UserItemState.hidden == False,
+            )
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
+    def get_unread_unhidden_item_ids(self, user_id: int, feed_item_ids: list[int]) -> list[int]:
+        """Get feed_item_ids that are unread and not hidden.
+
+        Items without UserItemState are considered unread.
+        """
+        if not feed_item_ids:
+            return []
+        # Get items that ARE read or hidden
+        stmt = select(UserItemState.feed_item_id).where(
+            and_(
+                UserItemState.user_id == user_id,
+                UserItemState.feed_item_id.in_(feed_item_ids),
+                (UserItemState.read == True) | (UserItemState.hidden == True),
+            )
+        )
+        excluded = set(self.db.execute(stmt).scalars().all())
+        return [fid for fid in feed_item_ids if fid not in excluded]
 
     def bulk_set_read(self, user_id: int, feed_item_ids: list[int]) -> None:
         """Mark multiple items as read."""

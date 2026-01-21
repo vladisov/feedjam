@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/shared/Button";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/shared/Button';
 import {
   SunIcon,
   MoonIcon,
@@ -11,50 +11,50 @@ import {
   ClipboardIcon,
   ArrowPathIcon,
   EnvelopeIcon,
-} from "@heroicons/react/24/outline";
-import { api } from "@/lib/api";
+} from '@heroicons/react/24/outline';
+import { api } from '@/lib/api';
 import type {
   UserInterest,
   UserInterestIn,
   UserSettingsIn,
-} from "@/types/feed";
-import { toast } from "sonner";
+} from '@/types/feed';
+import { toast } from 'sonner';
 
 function getInitialTheme(): boolean {
-  if (typeof window === "undefined") return false;
-  const saved = localStorage.getItem("theme");
-  if (saved === "dark") return true;
-  if (saved === "light") return false;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  if (typeof window === 'undefined') return false;
+  const saved = localStorage.getItem('theme');
+  if (saved === 'dark') return true;
+  if (saved === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [isDark, setIsDark] = useState(getInitialTheme);
-  const [newTopic, setNewTopic] = useState("");
+  const [newTopic, setNewTopic] = useState('');
   const [newWeight, setNewWeight] = useState(1.0);
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState('');
 
   const { data: interests = [], isLoading } = useQuery({
-    queryKey: ["interests"],
+    queryKey: ['interests'],
     queryFn: () => api.getInterests(),
   });
 
   const { data: settings } = useQuery({
-    queryKey: ["settings"],
+    queryKey: ['settings'],
     queryFn: () => api.getSettings(),
   });
 
   const { data: inbox } = useQuery({
-    queryKey: ["inbox"],
+    queryKey: ['inbox'],
     queryFn: () => api.getInbox(),
   });
 
   const addInterestMutation = useMutation({
     mutationFn: (interest: UserInterestIn) => api.addInterest(interest),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["interests"] });
-      setNewTopic("");
+      queryClient.invalidateQueries({ queryKey: ['interests'] });
+      setNewTopic('');
       setNewWeight(1.0);
     },
   });
@@ -62,30 +62,30 @@ export default function SettingsPage() {
   const deleteInterestMutation = useMutation({
     mutationFn: (interestId: number) => api.deleteInterest(interestId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["interests"] });
+      queryClient.invalidateQueries({ queryKey: ['interests'] });
     },
   });
 
   const updateSettingsMutation = useMutation({
     mutationFn: (settingsIn: UserSettingsIn) => api.updateSettings(settingsIn),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
-      setApiKey("");
-      toast.success("API key saved");
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      setApiKey('');
+      toast.success('API key saved');
     },
     onError: () => {
-      toast.error("Failed to save API key");
+      toast.error('Failed to save API key');
     },
   });
 
   const regenerateInboxMutation = useMutation({
     mutationFn: () => api.regenerateInbox(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      toast.success("Inbox address regenerated");
+      queryClient.invalidateQueries({ queryKey: ['inbox'] });
+      toast.success('Inbox address regenerated');
     },
     onError: () => {
-      toast.error("Failed to regenerate inbox address");
+      toast.error('Failed to regenerate inbox address');
     },
   });
 
@@ -102,7 +102,7 @@ export default function SettingsPage() {
   };
 
   const handleRemoveApiKey = (): void => {
-    updateSettingsMutation.mutate({ openai_api_key: "" });
+    updateSettingsMutation.mutate({ openai_api_key: '' });
   };
 
   const handleCopyInbox = (): void => {
@@ -110,19 +110,19 @@ export default function SettingsPage() {
 
     navigator.clipboard
       .writeText(inbox.inbox_address)
-      .then(() => toast.success("Copied to clipboard"))
-      .catch(() => toast.error("Failed to copy to clipboard"));
+      .then(() => toast.success('Copied to clipboard'))
+      .catch(() => toast.error('Failed to copy to clipboard'));
   };
 
   const handleRegenerateInbox = (): void => {
-    if (confirm("Are you sure? The old address will stop working.")) {
+    if (confirm('Are you sure? The old address will stop working.')) {
       regenerateInboxMutation.mutate();
     }
   };
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
-    localStorage.setItem("theme", isDark ? "dark" : "light");
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
   return (
@@ -136,9 +136,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Settings sections */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Interests */}
-        <section className="rounded-lg border border-border bg-card p-6">
+        <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <h3 className="mb-4 text-lg font-medium text-foreground">
             Interests
           </h3>
@@ -148,32 +148,37 @@ export default function SettingsPage() {
           </p>
 
           {/* Add interest form */}
-          <form onSubmit={handleAddInterest} className="mb-4 flex gap-2">
+          <form
+            onSubmit={handleAddInterest}
+            className="mb-4 space-y-2 sm:space-y-0 sm:flex sm:gap-2"
+          >
             <input
               type="text"
               value={newTopic}
               onChange={(e) => setNewTopic(e.target.value)}
               placeholder="e.g., python, rust, machine-learning"
-              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full sm:flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            <select
-              value={newWeight}
-              onChange={(e) => setNewWeight(parseFloat(e.target.value))}
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value={0.5}>Low (0.5x)</option>
-              <option value={1.0}>Normal (1x)</option>
-              <option value={1.5}>High (1.5x)</option>
-              <option value={2.0}>Very High (2x)</option>
-            </select>
-            <Button
-              type="submit"
-              disabled={!newTopic.trim() || addInterestMutation.isPending}
-              className="gap-1"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Add
-            </Button>
+            <div className="flex gap-2">
+              <select
+                value={newWeight}
+                onChange={(e) => setNewWeight(parseFloat(e.target.value))}
+                className="flex-1 sm:flex-none rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value={0.5}>Low</option>
+                <option value={1.0}>Normal</option>
+                <option value={1.5}>High</option>
+                <option value={2.0}>Very High</option>
+              </select>
+              <Button
+                type="submit"
+                disabled={!newTopic.trim() || addInterestMutation.isPending}
+                className="gap-1"
+              >
+                <PlusIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Add</span>
+              </Button>
+            </div>
           </form>
 
           {/* Interest list */}
@@ -212,7 +217,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Email Inbox */}
-        <section className="rounded-lg border border-border bg-card p-6">
+        <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <h3 className="mb-4 text-lg font-medium text-foreground">
             Email Inbox
           </h3>
@@ -223,31 +228,31 @@ export default function SettingsPage() {
 
           {inbox?.inbox_address ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex flex-1 items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
-                  <EnvelopeIcon className="h-4 w-4 text-muted-foreground" />
-                  <code className="flex-1 text-sm text-foreground">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
+                  <EnvelopeIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  <code className="flex-1 truncate text-sm text-foreground">
                     {inbox.inbox_address}
                   </code>
                 </div>
                 <Button
                   variant="secondary"
                   onClick={handleCopyInbox}
-                  className="gap-1"
+                  className="gap-1 flex-shrink-0"
                 >
                   <ClipboardIcon className="h-4 w-4" />
                   Copy
                 </Button>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
                 <p className="text-xs text-muted-foreground">
-                  Need a new address? Regenerating will invalidate the old one.
+                  Regenerating will invalidate the old address.
                 </p>
                 <Button
                   variant="secondary"
                   onClick={handleRegenerateInbox}
                   disabled={regenerateInboxMutation.isPending}
-                  className="gap-1"
+                  className="gap-1 flex-shrink-0"
                 >
                   <ArrowPathIcon className="h-4 w-4" />
                   Regenerate
@@ -262,7 +267,7 @@ export default function SettingsPage() {
         </section>
 
         {/* API Keys */}
-        <section className="rounded-lg border border-border bg-card p-6">
+        <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <h3 className="mb-4 text-lg font-medium text-foreground">API Keys</h3>
           <p className="mb-4 text-sm text-muted-foreground">
             Provide your own API keys for AI-powered features like summarization
@@ -276,43 +281,48 @@ export default function SettingsPage() {
                 OpenAI API Key
               </label>
               {settings?.has_openai_key ? (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <div className="flex flex-1 items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
-                    <KeyIcon className="h-4 w-4 text-muted-foreground" />
+                    <KeyIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">
                       Key configured
                     </span>
-                    <CheckIcon className="h-4 w-4 text-green-500" />
+                    <CheckIcon className="h-4 w-4 flex-shrink-0 text-green-500" />
                   </div>
                   <Button
                     variant="secondary"
                     onClick={handleRemoveApiKey}
                     disabled={updateSettingsMutation.isPending}
+                    className="flex-shrink-0"
                   >
                     Remove
                   </Button>
                 </div>
               ) : (
-                <form onSubmit={handleSaveApiKey} className="flex gap-2">
+                <form
+                  onSubmit={handleSaveApiKey}
+                  className="flex flex-col sm:flex-row gap-2"
+                >
                   <input
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     placeholder="sk-..."
-                    className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full sm:flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                   <Button
                     type="submit"
                     disabled={
                       !apiKey.trim() || updateSettingsMutation.isPending
                     }
+                    className="flex-shrink-0"
                   >
                     Save
                   </Button>
                 </form>
               )}
               <p className="mt-2 text-xs text-muted-foreground">
-                Get your API key from{" "}
+                Get your API key from{' '}
                 <a
                   href="https://platform.openai.com/api-keys"
                   target="_blank"
@@ -327,7 +337,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Appearance */}
-        <section className="rounded-lg border border-border bg-card p-6">
+        <section className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <h3 className="mb-4 text-lg font-medium text-foreground">
             Appearance
           </h3>

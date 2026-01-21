@@ -686,6 +686,48 @@ class EmailService:
         # 5. Save to feed storage
 ```
 
+## User Onboarding
+
+New users go through a multi-step onboarding wizard before accessing the main feed.
+
+### Flow
+```
+Register → OnboardingPage (3 steps) → FeedPage
+         ↓
+    [Step 1: Welcome]
+         ↓
+    [Step 2: Pick Feeds] - Select from suggested tech feeds
+         ↓
+    [Step 3: Pick Interests] - Select topic chips
+         ↓
+    [Complete] → Redirect to feed
+```
+
+### Model
+```python
+class User(Base):
+    # ... existing fields
+    onboarding_completed: Mapped[bool] = mapped_column(default=False)
+```
+
+### Schema
+```python
+class AuthUserOut(BaseModel):
+    # ... existing fields
+    onboarding_completed: bool
+```
+
+### API Endpoints
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/users/me/complete-onboarding` | Mark onboarding as completed |
+
+### Behavior
+- New users have `onboarding_completed=False` by default
+- Frontend redirects to `/onboarding` if flag is false
+- After completing wizard, frontend calls complete-onboarding endpoint
+- Existing users are not affected (migration sets `True` for existing)
+
 ## User Settings & API Keys
 
 Users can provide their own API keys for AI-powered features.

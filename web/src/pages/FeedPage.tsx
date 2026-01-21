@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
@@ -7,7 +7,7 @@ import { SearchBar } from '@/components/feed/SearchBar'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
 import { KeyboardShortcutsHelp } from '@/components/shared/KeyboardShortcutsHelp'
-import { ArrowPathIcon, Bars3BottomLeftIcon, EyeSlashIcon, CheckIcon, SparklesIcon, QuestionMarkCircleIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, Bars3BottomLeftIcon, EyeSlashIcon, CheckIcon, SparklesIcon, QuestionMarkCircleIcon, ChevronUpDownIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { applySearch, parseSearchQuery, requiresServerSearch, toSearchParams } from '@/lib/search'
@@ -26,9 +26,11 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'source', label: 'Source A-Z' },
 ]
 
-function getStoredValue<T extends string>(key: string, defaultValue: T): T {
+function getStored<T>(key: string, defaultValue: T, parse?: (v: string) => T): T {
   if (typeof window === 'undefined') return defaultValue
-  return (localStorage.getItem(key) as T) ?? defaultValue
+  const stored = localStorage.getItem(key)
+  if (stored === null) return defaultValue
+  return parse ? parse(stored) : (stored as unknown as T)
 }
 
 function getDateValue(item: FeedItem): number {
@@ -75,24 +77,24 @@ function TabButton({ isActive, onClick, children }: TabButtonProps): React.React
   )
 }
 
+function useInvalidateAll() {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['feed'] })
+    queryClient.invalidateQueries({ queryKey: ['search'] })
+    queryClient.invalidateQueries({ queryKey: ['digest'] })
+  }
+}
+
 function useFeedItemMutation(
   mutationFn: (item: FeedItem) => Promise<unknown>
 ): (item: FeedItem) => void {
-  const queryClient = useQueryClient()
+  const invalidateAll = useInvalidateAll()
   const mutation = useMutation({
     mutationFn,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feed'] })
-    },
+    onSuccess: invalidateAll,
   })
   return mutation.mutate
-}
-
-function getStoredBoolean(key: string, defaultValue: boolean): boolean {
-  if (typeof window === 'undefined') return defaultValue
-  const stored = localStorage.getItem(key)
-  if (stored === null) return defaultValue
-  return stored !== 'false'
 }
 
 function toFeedItem(item: SearchResultItem): FeedItem {
@@ -116,13 +118,14 @@ function toFeedItem(item: SearchResultItem): FeedItem {
 
 export default function FeedPage(): React.ReactElement {
   const [searchQuery, setSearchQuery] = useState('')
-  const [showSummaries, setShowSummaries] = useState(() => getStoredBoolean('feedShowSummaries', true))
-  const [sortOption, setSortOption] = useState<SortOption>(() => getStoredValue('feedSortOption', 'newest'))
+  const [showSummaries, setShowSummaries] = useState(() => getStored('feedShowSummaries', true, (v) => v !== 'false'))
+  const [sortOption, setSortOption] = useState<SortOption>(() => getStored('feedSortOption', 'newest' as SortOption))
   const [activeTab, setActiveTab] = useState<FeedTab>('all')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [menuOpen, setMenuOpen] = useState(false)
   const { items, isLoading, error, refetch } = useFeedQuery()
   const loadMoreRef = useRef<HTMLDivElement>(null)
-
+  const menuRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
 
   // Digest query
@@ -145,19 +148,19 @@ export default function FeedPage(): React.ReactElement {
   })
 
   const handleToggleLike = useFeedItemMutation((item) =>
-    api.toggleLike(item.id)
+    api.toggleLike(item.feed_item_id)
   )
   const handleToggleDislike = useFeedItemMutation((item) =>
-    api.toggleDislike(item.id)
+    api.toggleDislike(item.feed_item_id)
   )
   const handleToggleStar = useFeedItemMutation((item) =>
-    api.toggleStar(item.id)
+    api.toggleStar(item.feed_item_id)
   )
   const handleMarkRead = useFeedItemMutation((item) =>
-    api.markRead(item.id)
+    api.markRead(item.feed_item_id)
   )
   const handleToggleHide = useFeedItemMutation((item) =>
-    api.toggleHide(item.id)
+    api.toggleHide(item.feed_item_id)
   )
 
   // Get filtered items based on active tab (needed for keyboard shortcuts)
@@ -216,6 +219,19 @@ export default function FeedPage(): React.ReactElement {
   useEffect(() => {
     setVisibleCount(PAGE_SIZE)
   }, [searchQuery, activeTab])
+
+  // Close menu on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [menuOpen])
 
   // Keyboard shortcuts (use visible items for navigation)
   const { selectedIndex, showHelp, setShowHelp } = useKeyboardShortcuts({
@@ -294,32 +310,6 @@ export default function FeedPage(): React.ReactElement {
           </TabButton>
         </div>
         <div className="flex items-center gap-1">
-          {activeTab === 'all' && unreadCount > 0 && (
-            <Button
-              onClick={() => markAllReadMutation.mutate()}
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              disabled={markAllReadMutation.isPending}
-              title="Mark all as read"
-            >
-              <CheckIcon className="h-4 w-4" />
-              <span className="hidden sm:inline text-xs">Read all</span>
-            </Button>
-          )}
-          {activeTab === 'all' && readCount > 0 && (
-            <Button
-              onClick={() => hideReadMutation.mutate()}
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              disabled={hideReadMutation.isPending}
-              title={`Hide ${readCount} read items`}
-            >
-              <EyeSlashIcon className="h-4 w-4" />
-              <span className="hidden sm:inline text-xs">Hide {readCount}</span>
-            </Button>
-          )}
           <Button
             onClick={toggleShowSummaries}
             variant="ghost"
@@ -337,20 +327,62 @@ export default function FeedPage(): React.ReactElement {
           >
             <ArrowPathIcon className="h-4 w-4" />
           </Button>
+          {activeTab === 'all' && (unreadCount > 0 || readCount > 0) && (
+            <div ref={menuRef} className="relative">
+              <Button
+                onClick={() => setMenuOpen(!menuOpen)}
+                variant="ghost"
+                size="sm"
+                title="More actions"
+              >
+                <EllipsisVerticalIcon className="h-4 w-4" />
+              </Button>
+              {menuOpen && (
+                <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-lg border border-border bg-card py-1 shadow-lg">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={() => {
+                        markAllReadMutation.mutate()
+                        setMenuOpen(false)
+                      }}
+                      disabled={markAllReadMutation.isPending}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                      Mark all as read ({unreadCount})
+                    </button>
+                  )}
+                  {readCount > 0 && (
+                    <button
+                      onClick={() => {
+                        hideReadMutation.mutate()
+                        setMenuOpen(false)
+                      }}
+                      disabled={hideReadMutation.isPending}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50"
+                    >
+                      <EyeSlashIcon className="h-4 w-4" />
+                      Hide read items ({readCount})
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Search and Sort (only show for All tab) */}
       {activeTab === 'all' && (
         <div className="mb-4 flex gap-2">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
           </div>
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <select
               value={sortOption}
               onChange={(e) => handleSortChange(e.target.value as SortOption)}
-              className="h-10 appearance-none rounded-lg border border-border bg-card pl-3 pr-8 text-sm text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-10 appearance-none rounded-lg border border-border bg-card pl-2 pr-7 sm:pl-3 sm:pr-8 text-sm text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -358,7 +390,7 @@ export default function FeedPage(): React.ReactElement {
                 </option>
               ))}
             </select>
-            <ChevronUpDownIcon className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <ChevronUpDownIcon className="pointer-events-none absolute right-1.5 sm:right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
         </div>
       )}

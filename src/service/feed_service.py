@@ -1,5 +1,7 @@
 """Feed service - handles feed fetching and generation."""
 
+from sqlalchemy import select
+
 from api.exceptions import EntityNotFoundException, ParserNotFoundException
 from model.feed import FeedItem
 from repository.feed_storage import FeedStorage
@@ -37,20 +39,19 @@ class FeedService:
         self.like_history_storage = like_history_storage
         self.user_item_state_storage = user_item_state_storage
 
-    def mark_read(self, user_id: int, item_id: int) -> bool:
+    def mark_read(self, user_id: int, feed_item_id: int) -> bool:
         """Mark a feed item as read."""
-        item = self.feed_storage.get_item(user_id, item_id)
-        if not item:
+        # Validate feed_item exists
+        if not self._feed_item_exists(feed_item_id):
             return False
+        self.user_item_state_storage.set_read(user_id, feed_item_id, True)
+        return True
 
-        # Update ephemeral state
-        result = self.feed_storage.mark_as_read(user_id, item_id)
-
-        # Sync to persistent state
-        if result and item.feed_item_id:
-            self.user_item_state_storage.set_read(user_id, item.feed_item_id, True)
-
-        return result
+    def _feed_item_exists(self, feed_item_id: int) -> bool:
+        """Check if a feed item exists."""
+        stmt = select(FeedItem.id).where(FeedItem.id == feed_item_id)
+        result = self.feed_storage.db.execute(stmt).scalar_one_or_none()
+        return result is not None
 
     def fetch_and_save_items(self, subscription_id: int) -> list[FeedItemIn]:
         """Fetch and save feed items for a subscription."""
@@ -116,6 +117,9 @@ class FeedService:
         # Apply personalized ranking
         items = self.ranking_service.compute_rank_scores(user_id, items)
 
+        # Deactivate ALL existing feeds first to prevent race conditions
+        self.feed_storage.deactivate_all_user_feeds(user_id)
+
         new_feed = UserFeedIn(
             user_id=user_id,
             is_active=True,
@@ -124,97 +128,66 @@ class FeedService:
 
         self.feed_storage.save_user_feed(new_feed)
 
-        if active_feed:
-            self.feed_storage.deactivate_user_feed(active_feed.id)
-
-    def toggle_like(self, user_id: int, item_id: int) -> dict:
+    def toggle_like(self, user_id: int, feed_item_id: int) -> dict:
         """Toggle like for a feed item and update like history."""
-        success, source_name, feed_item_id, is_liked = self.feed_storage.toggle_like(
-            user_id, item_id
+        is_liked, source_name = self.user_item_state_storage.toggle_liked(
+            user_id, feed_item_id
         )
-        if not success:
-            raise EntityNotFoundException("FeedItem", item_id)
-
         if source_name:
             self._update_like_history(user_id, source_name, is_liked, is_like=True)
-
-        if feed_item_id:
-            self.user_item_state_storage.set_liked(user_id, feed_item_id, is_liked)
-
         return {"liked": is_liked}
 
-    def toggle_dislike(self, user_id: int, item_id: int) -> dict:
+    def toggle_dislike(self, user_id: int, feed_item_id: int) -> dict:
         """Toggle dislike for a feed item and update like history."""
-        success, source_name, feed_item_id, is_disliked = self.feed_storage.toggle_dislike(
-            user_id, item_id
+        is_disliked, source_name = self.user_item_state_storage.toggle_disliked(
+            user_id, feed_item_id
         )
-        if not success:
-            raise EntityNotFoundException("FeedItem", item_id)
-
         if source_name:
             self._update_like_history(user_id, source_name, is_disliked, is_like=False)
-
-        if feed_item_id:
-            self.user_item_state_storage.set_disliked(user_id, feed_item_id, is_disliked)
-
         return {"disliked": is_disliked}
 
-    def toggle_star(self, user_id: int, item_id: int) -> dict:
+    def toggle_star(self, user_id: int, feed_item_id: int) -> dict:
         """Toggle star (save for later) for a feed item."""
-        success, feed_item_id, is_starred = self.feed_storage.toggle_star(user_id, item_id)
-        if not success:
-            raise EntityNotFoundException("FeedItem", item_id)
-
-        if feed_item_id:
-            self.user_item_state_storage.set_starred(user_id, feed_item_id, is_starred)
-
+        is_starred = self.user_item_state_storage.toggle_starred(user_id, feed_item_id)
         return {"starred": is_starred}
 
-    def toggle_hide(self, user_id: int, item_id: int) -> dict:
+    def toggle_hide(self, user_id: int, feed_item_id: int) -> dict:
         """Toggle hide for a feed item."""
-        success, feed_item_id, is_hidden = self.feed_storage.toggle_hide(user_id, item_id)
-        if not success:
-            raise EntityNotFoundException("FeedItem", item_id)
-
-        if feed_item_id:
-            self.user_item_state_storage.set_hidden(user_id, feed_item_id, is_hidden)
-
+        is_hidden = self.user_item_state_storage.toggle_hidden(user_id, feed_item_id)
         return {"hidden": is_hidden}
 
     def _update_like_history(
         self, user_id: int, source_name: str, is_active: bool, *, is_like: bool
     ) -> None:
         """Update like history for a source."""
+        storage = self.like_history_storage
         if is_like:
-            if is_active:
-                self.like_history_storage.increment_like(user_id, source_name)
-            else:
-                self.like_history_storage.decrement_like(user_id, source_name)
+            method = storage.increment_like if is_active else storage.decrement_like
         else:
-            if is_active:
-                self.like_history_storage.increment_dislike(user_id, source_name)
-            else:
-                self.like_history_storage.decrement_dislike(user_id, source_name)
+            method = storage.increment_dislike if is_active else storage.decrement_dislike
+        method(user_id, source_name)
 
     def hide_read_items(self, user_id: int) -> dict:
         """Hide all read items for a user."""
-        count, feed_item_ids = self.feed_storage.hide_read_items(user_id)
-
-        # Sync to persistent state
-        if feed_item_ids:
-            self.user_item_state_storage.bulk_set_hidden(user_id, feed_item_ids)
-
-        return {"hidden_count": count}
+        # Get feed_item_ids from active feed
+        active_ids = self.user_item_state_storage.get_active_feed_item_ids(user_id)
+        # Filter to read but not hidden
+        to_hide = self.user_item_state_storage.get_read_unhidden_item_ids(user_id, active_ids)
+        # Bulk hide
+        if to_hide:
+            self.user_item_state_storage.bulk_set_hidden(user_id, to_hide)
+        return {"hidden_count": len(to_hide)}
 
     def mark_all_read(self, user_id: int) -> dict:
         """Mark all unread items as read for a user."""
-        count, feed_item_ids = self.feed_storage.mark_all_read(user_id)
-
-        # Sync to persistent state
-        if feed_item_ids:
-            self.user_item_state_storage.bulk_set_read(user_id, feed_item_ids)
-
-        return {"read_count": count}
+        # Get feed_item_ids from active feed
+        active_ids = self.user_item_state_storage.get_active_feed_item_ids(user_id)
+        # Filter to unread and not hidden
+        to_read = self.user_item_state_storage.get_unread_unhidden_item_ids(user_id, active_ids)
+        # Bulk mark read
+        if to_read:
+            self.user_item_state_storage.bulk_set_read(user_id, to_read)
+        return {"read_count": len(to_read)}
 
     def search_items(
         self,

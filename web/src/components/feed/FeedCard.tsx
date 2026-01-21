@@ -4,9 +4,9 @@ import {
   BookmarkIcon,
   ChatBubbleLeftIcon,
   EyeIcon,
+  EyeSlashIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import {
   BookmarkIcon as BookmarkIconSolid,
@@ -68,7 +68,7 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
   },
   ref
 ) {
-  const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked } = item.state
+  const { read: isRead, star: isStarred, like: isLiked, dislike: isDisliked, hide: isHidden } = item.state
 
   const handleArticleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
@@ -90,7 +90,7 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
       )}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <a
             href={item.article_url || '#'}
             target="_blank"
@@ -100,7 +100,7 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
           >
             <h3
               className={cn(
-                'text-base font-medium leading-snug',
+                'text-sm sm:text-base font-medium leading-snug break-words',
                 isRead ? 'text-feed-read' : 'text-foreground',
                 'group-hover/link:text-feed-unread'
               )}
@@ -109,13 +109,13 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
             </h3>
             <ArrowTopRightOnSquareIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/link:opacity-100" />
           </a>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="mt-0.5 text-xs text-muted-foreground truncate">
             {item.source_name}
             {item.created_at && <> &middot; {formatRelativeTime(item.created_at)}</>}
           </p>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex flex-shrink-0 items-center gap-1">
           <ActionButton
             onClick={() => onToggleLike?.(item)}
             isActive={isLiked}
@@ -143,9 +143,9 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
           <button
             onClick={() => onToggleHide?.(item)}
             className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            title="Hide"
+            title={isHidden ? 'Unhide' : 'Hide'}
           >
-            <XMarkIcon className="h-5 w-5" />
+            {isHidden ? <EyeIcon className="h-5 w-5" /> : <EyeSlashIcon className="h-5 w-5" />}
           </button>
         </div>
       </div>

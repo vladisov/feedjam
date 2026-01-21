@@ -1,18 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { FeedCard } from './FeedCard'
-import { SwipeableCard } from './SwipeableCard'
 import type { FeedItemActions } from '@/types/actions'
 import type { FeedItem } from '@/types/feed'
-
-function useIsTouchDevice(): boolean {
-  const [isTouch, setIsTouch] = useState(false)
-
-  useEffect(() => {
-    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0)
-  }, [])
-
-  return isTouch
-}
 
 interface FeedListProps extends FeedItemActions {
   items: FeedItem[]
@@ -31,9 +20,7 @@ export function FeedList({
   onToggleHide,
 }: FeedListProps): React.ReactElement {
   const selectedRef = useRef<HTMLDivElement>(null)
-  const isTouchDevice = useIsTouchDevice()
 
-  // Scroll selected item into view
   useEffect(() => {
     if (selectedIndex >= 0 && selectedRef.current) {
       selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -51,40 +38,22 @@ export function FeedList({
     )
   }
 
-  function renderItem(item: FeedItem, index: number): React.ReactElement {
-    const isSelected = index === selectedIndex
-    const card = (
-      <FeedCard
-        ref={isSelected ? selectedRef : null}
-        item={item}
-        showSummary={showSummaries}
-        isSelected={isSelected}
-        onToggleStar={onToggleStar}
-        onToggleLike={onToggleLike}
-        onToggleDislike={onToggleDislike}
-        onMarkRead={onMarkRead}
-        onToggleHide={onToggleHide}
-      />
-    )
-
-    if (isTouchDevice) {
-      return (
-        <SwipeableCard
-          key={item.id}
-          onSwipeLeft={() => onToggleHide?.(item)}
-          onSwipeRight={() => onToggleStar?.(item)}
-        >
-          {card}
-        </SwipeableCard>
-      )
-    }
-
-    return <div key={item.id}>{card}</div>
-  }
-
   return (
     <div className="space-y-3">
-      {items.map(renderItem)}
+      {items.map((item, index) => (
+        <FeedCard
+          key={item.id}
+          ref={index === selectedIndex ? selectedRef : null}
+          item={item}
+          showSummary={showSummaries}
+          isSelected={index === selectedIndex}
+          onToggleStar={onToggleStar}
+          onToggleLike={onToggleLike}
+          onToggleDislike={onToggleDislike}
+          onMarkRead={onMarkRead}
+          onToggleHide={onToggleHide}
+        />
+      ))}
     </div>
   )
 }

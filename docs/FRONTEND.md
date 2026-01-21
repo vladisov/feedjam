@@ -524,6 +524,44 @@ const { logout } = useAuth()
 <button onClick={logout}>Logout</button>
 ```
 
+### Onboarding Flow
+
+New users are redirected to `/onboarding` after registration.
+
+**Config** (`config/onboarding.ts`):
+```tsx
+export const SUGGESTED_FEEDS = [
+  { name: 'Hacker News', url: 'https://hnrss.org/best', icon: '🔶' },
+  { name: 'Lobsters', url: 'https://lobste.rs/rss', icon: '🦞' },
+  // ... more feeds
+]
+
+export const INTEREST_TOPICS = [
+  'AI/ML', 'Startups', 'Web Dev', 'Mobile', 'DevOps',
+  'Security', 'Design', 'Open Source', 'Crypto', 'Science',
+  'Business', 'Gaming', 'Hardware', 'Programming',
+]
+```
+
+**OnboardingPage** (`pages/OnboardingPage.tsx`):
+- Step 1: Welcome message
+- Step 2: Select suggested feeds (checkboxes)
+- Step 3: Select interest topics (chips)
+- On complete: Creates subscriptions, saves interests, marks onboarding complete
+
+**AuthContext Integration**:
+```tsx
+// After login/register, check onboarding status
+if (!user.onboarding_completed) {
+  navigate('/onboarding')
+}
+```
+
+**Route**:
+```tsx
+<Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+```
+
 ## Utility Functions
 
 ### Date/Time Formatting

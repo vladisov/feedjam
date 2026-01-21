@@ -2,15 +2,16 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import and_, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_, select, update
+from sqlalchemy.orm import Session
 
 from model.feed import Feed, FeedItem, feed_feeditem_association
 from model.source import Source
 from model.subscription import Subscription
-from model.user_feed import UserFeed, UserFeedItem, UserFeedItemState
-from schemas import FeedItemIn, UserFeedOut
-from schemas.feeds import UserFeedIn
+from model.user_feed import UserFeed, UserFeedItem
+from model.user_item_state import UserItemState
+from schemas import FeedItemIn
+from schemas.feeds import ItemState, UserFeedIn, UserFeedItemOut, UserFeedOut
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -42,17 +43,83 @@ class FeedStorage:
         return self._get_items_by_sources(source_ids, skip, limit)
 
     def get_user_feed(self, user_id: int) -> UserFeedOut | None:
-        """Get the active user feed."""
-        stmt = (
+        """Get the active user feed with state from persistent UserItemState."""
+        # Get the active feed
+        feed_stmt = (
             select(UserFeed)
-            .options(joinedload(UserFeed.user_feed_items).joinedload(UserFeedItem.state))
             .where(and_(UserFeed.user_id == user_id, UserFeed.is_active == True))
+            .order_by(UserFeed.created_at.desc())
+            .limit(1)
         )
-        user_feed = self.db.execute(stmt).unique().scalar_one_or_none()
-        return UserFeedOut.model_validate(user_feed) if user_feed else None
+        user_feed = self.db.execute(feed_stmt).scalar_one_or_none()
+        if not user_feed:
+            return None
+
+        # Get items with persistent state (LEFT JOIN to handle items without state)
+        items_stmt = (
+            select(UserFeedItem, UserItemState)
+            .outerjoin(
+                UserItemState,
+                and_(
+                    UserItemState.user_id == UserFeedItem.user_id,
+                    UserItemState.feed_item_id == UserFeedItem.feed_item_id,
+                ),
+            )
+            .where(UserFeedItem.user_feed_id == user_feed.id)
+            .order_by(UserFeedItem.rank_score.desc())
+        )
+        results = self.db.execute(items_stmt).all()
+
+        # Build response with mapped state
+        feed_items = [
+            self._build_user_feed_item_out(item, state) for item, state in results
+        ]
+
+        return UserFeedOut(
+            id=user_feed.id,
+            user_id=user_feed.user_id,
+            is_active=user_feed.is_active,
+            created_at=user_feed.created_at,
+            updated_at=user_feed.updated_at,
+            user_feed_items=feed_items,
+        )
+
+    def _build_user_feed_item_out(
+        self, item: UserFeedItem, state: UserItemState | None
+    ) -> UserFeedItemOut:
+        """Build UserFeedItemOut with state from persistent UserItemState."""
+        # Map UserItemState fields to ItemState fields (or use defaults)
+        item_state = ItemState(
+            read=state.read if state else False,
+            like=state.liked if state else False,
+            dislike=state.disliked if state else False,
+            star=state.starred if state else False,
+            hide=state.hidden if state else False,
+        )
+        return UserFeedItemOut(
+            id=item.id,
+            feed_item_id=item.feed_item_id,
+            user_id=item.user_id,
+            title=item.title,
+            description=item.description or "",
+            source_name=item.source_name,
+            article_url=item.article_url,
+            comments_url=item.comments_url,
+            points=item.points,
+            views=item.views,
+            summary=item.summary,
+            rank_score=item.rank_score,
+            state=item_state,
+            created_at=item.created_at,
+            updated_at=item.updated_at,
+        )
 
     def save_user_feed(self, user_feed: UserFeedIn) -> int:
-        """Save a new user feed."""
+        """Save a new user feed.
+
+        Note: State is NOT stored in UserFeedItemState anymore.
+        State comes from persistent UserItemState on read.
+        """
         new_user_feed = UserFeed(
             user_id=user_feed.user_id,
             is_active=user_feed.is_active,
@@ -61,13 +128,8 @@ class FeedStorage:
         self.db.flush()
 
         for item in user_feed.user_feed_items:
-            state = UserFeedItemState(**item.state.model_dump())
-            self.db.add(state)
-            self.db.flush()
-
             item_data = item.model_dump(exclude={"state"})
             item_data["user_feed_id"] = new_user_feed.id
-            item_data["state_id"] = state.id
             new_item = UserFeedItem(**item_data)
             self.db.add(new_item)
 
@@ -82,133 +144,18 @@ class FeedStorage:
             user_feed.is_active = False
             self.db.commit()
 
-    def mark_as_read(self, user_id: int, item_id: int) -> bool:
-        """Mark a user feed item as read."""
-        item = self._get_user_feed_item(user_id, item_id)
-        if not item:
-            return False
-        item.state.read = True
-        self.db.commit()
-        return True
-
-    def toggle_like(self, user_id: int, item_id: int) -> tuple[bool, str | None, int | None, bool]:
-        """Toggle like state for a feed item.
-
-        Returns: (success, source_name, feed_item_id, new_like_state)
-        """
-        item = self._get_user_feed_item(user_id, item_id)
-        if not item:
-            return False, None, None, False
-        # If currently disliked, remove dislike first
-        if item.state.dislike:
-            item.state.dislike = False
-        item.state.like = not item.state.like
-        self.db.commit()
-        return True, item.source_name, item.feed_item_id, item.state.like
-
-    def toggle_dislike(
-        self, user_id: int, item_id: int
-    ) -> tuple[bool, str | None, int | None, bool]:
-        """Toggle dislike state for a feed item.
-
-        Returns: (success, source_name, feed_item_id, new_dislike_state)
-        """
-        item = self._get_user_feed_item(user_id, item_id)
-        if not item:
-            return False, None, None, False
-        # If currently liked, remove like first
-        if item.state.like:
-            item.state.like = False
-        item.state.dislike = not item.state.dislike
-        self.db.commit()
-        return True, item.source_name, item.feed_item_id, item.state.dislike
-
-    def toggle_star(self, user_id: int, item_id: int) -> tuple[bool, int | None, bool]:
-        """Toggle star (save for later) state for a feed item.
-
-        Returns: (success, feed_item_id, new_star_state)
-        """
-        item = self._get_user_feed_item(user_id, item_id)
-        if not item:
-            return False, None, False
-        item.state.star = not item.state.star
-        self.db.commit()
-        return True, item.feed_item_id, item.state.star
-
-    def toggle_hide(self, user_id: int, item_id: int) -> tuple[bool, int | None, bool]:
-        """Toggle hide state for a feed item.
-
-        Returns: (success, feed_item_id, new_hide_state)
-        """
-        item = self._get_user_feed_item(user_id, item_id)
-        if not item:
-            return False, None, False
-        item.state.hide = not item.state.hide
-        self.db.commit()
-        return True, item.feed_item_id, item.state.hide
-
-    def hide_read_items(self, user_id: int) -> tuple[int, list[int]]:
-        """Hide all read items for a user.
-
-        Returns: (count of items hidden, list of feed_item_ids affected)
-        """
+    def deactivate_all_user_feeds(self, user_id: int) -> int:
+        """Deactivate all active feeds for a user. Returns count of deactivated feeds."""
         stmt = (
-            select(UserFeedItem)
-            .join(UserFeedItemState)
-            .join(UserFeed)
-            .where(
-                and_(
-                    UserFeed.user_id == user_id,
-                    UserFeed.is_active == True,
-                    UserFeedItemState.read == True,
-                    UserFeedItemState.hide == False,
-                )
-            )
+            update(UserFeed)
+            .where(and_(UserFeed.user_id == user_id, UserFeed.is_active == True))
+            .values(is_active=False)
         )
-        items = self.db.execute(stmt).scalars().all()
-        feed_item_ids = [item.feed_item_id for item in items]
-        for item in items:
-            item.state.hide = True
+        result = self.db.execute(stmt)
         self.db.commit()
-        return len(items), feed_item_ids
-
-    def mark_all_read(self, user_id: int) -> tuple[int, list[int]]:
-        """Mark all unread items as read for a user.
-
-        Returns: (count of items marked as read, list of feed_item_ids affected)
-        """
-        stmt = (
-            select(UserFeedItem)
-            .join(UserFeedItemState)
-            .join(UserFeed)
-            .where(
-                and_(
-                    UserFeed.user_id == user_id,
-                    UserFeed.is_active == True,
-                    UserFeedItemState.read == False,
-                    UserFeedItemState.hide == False,
-                )
-            )
-        )
-        items = self.db.execute(stmt).scalars().all()
-        feed_item_ids = [item.feed_item_id for item in items]
-        for item in items:
-            item.state.read = True
-        self.db.commit()
-        return len(items), feed_item_ids
-
-    def get_item(self, user_id: int, item_id: int) -> UserFeedItem | None:
-        """Get a single user feed item."""
-        return self._get_user_feed_item(user_id, item_id)
+        return result.rowcount
 
     # --- Private helpers ---
-
-    def _get_user_feed_item(self, user_id: int, item_id: int) -> UserFeedItem | None:
-        """Get a user feed item by user and item ID."""
-        stmt = select(UserFeedItem).where(
-            and_(UserFeedItem.id == item_id, UserFeedItem.user_id == user_id)
-        )
-        return self.db.execute(stmt).scalar_one_or_none()
 
     def _get_or_create_feed(self, source_id: int) -> Feed:
         """Get or create a feed for a source."""

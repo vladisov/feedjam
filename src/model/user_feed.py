@@ -19,25 +19,19 @@ class UserFeed(Base):
     user_feed_items: Mapped[list["UserFeedItem"]] = relationship(back_populates="user_feed")
 
 
-class UserFeedItemState(Base):
-    __tablename__ = "user_feed_item_states"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    hide: Mapped[bool] = mapped_column(default=False)
-    read: Mapped[bool] = mapped_column(default=False)
-    star: Mapped[bool] = mapped_column(default=False)
-    like: Mapped[bool] = mapped_column(default=False)
-    dislike: Mapped[bool] = mapped_column(default=False)
-
-
 class UserFeedItem(Base):
+    """User feed item - holds denormalized content for display.
+
+    Note: State (read, liked, starred, etc.) comes from UserItemState via JOIN,
+    not from a dedicated state table. This ensures state persists across feed regenerations.
+    """
+
     __tablename__ = "user_feed_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     feed_item_id: Mapped[int] = mapped_column(ForeignKey("feed_items.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     user_feed_id: Mapped[int] = mapped_column(ForeignKey("user_feeds.id"), index=True)
-    state_id: Mapped[int] = mapped_column(ForeignKey("user_feed_item_states.id"))
 
     # Denormalized fields for quick access
     title: Mapped[str] = mapped_column(String(1024))
@@ -53,5 +47,4 @@ class UserFeedItem(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
-    state: Mapped["UserFeedItemState"] = relationship()
     user_feed: Mapped["UserFeed"] = relationship(back_populates="user_feed_items")
