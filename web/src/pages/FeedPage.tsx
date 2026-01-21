@@ -244,11 +244,13 @@ export default function FeedPage(): React.ReactElement {
   })
 
   // Counts for action buttons (based on visible non-hidden items)
-  const { readCount, unreadCount } = useMemo(() => {
+  const { totalCount, readCount, unreadCount } = useMemo(() => {
     const visible = items.filter((item) => !item.state.hide)
+    const read = visible.filter((item) => item.state.read).length
     return {
-      readCount: visible.filter((item) => item.state.read).length,
-      unreadCount: visible.filter((item) => !item.state.read).length,
+      totalCount: visible.length,
+      readCount: read,
+      unreadCount: visible.length - read,
     }
   }, [items])
 
@@ -279,19 +281,17 @@ export default function FeedPage(): React.ReactElement {
 
   return (
     <div>
-      {/* Page header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">
-            {activeTab === 'digest' ? "Today's Digest" : 'Your Feed'}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {activeTab === 'digest'
-              ? 'Top 5 items from the last 24 hours'
-              : hasMore
-                ? `Showing ${visibleItems.length} of ${filteredItems.length} items`
-                : `${filteredItems.length} items`}
-          </p>
+      {/* Tabs + Actions */}
+      <div className="mb-4 flex items-center justify-between border-b border-border">
+        <div className="flex">
+          <TabButton isActive={activeTab === 'all'} onClick={() => setActiveTab('all')}>
+            All
+            <span className="ml-1.5 text-xs text-muted-foreground">{totalCount}</span>
+          </TabButton>
+          <TabButton isActive={activeTab === 'digest'} onClick={() => setActiveTab('digest')}>
+            <SparklesIcon className="h-4 w-4" />
+            Digest
+          </TabButton>
         </div>
         <div className="flex items-center gap-1">
           {activeTab === 'all' && unreadCount > 0 && (
@@ -299,12 +299,12 @@ export default function FeedPage(): React.ReactElement {
               onClick={() => markAllReadMutation.mutate()}
               variant="ghost"
               size="sm"
-              className="gap-2"
+              className="gap-1.5"
               disabled={markAllReadMutation.isPending}
-              title="Mark all items as read"
+              title="Mark all as read"
             >
               <CheckIcon className="h-4 w-4" />
-              Mark all read
+              <span className="hidden sm:inline text-xs">Read all</span>
             </Button>
           )}
           {activeTab === 'all' && readCount > 0 && (
@@ -312,19 +312,19 @@ export default function FeedPage(): React.ReactElement {
               onClick={() => hideReadMutation.mutate()}
               variant="ghost"
               size="sm"
-              className="gap-2"
+              className="gap-1.5"
               disabled={hideReadMutation.isPending}
-              title="Hide all read items"
+              title={`Hide ${readCount} read items`}
             >
               <EyeSlashIcon className="h-4 w-4" />
-              Hide read ({readCount})
+              <span className="hidden sm:inline text-xs">Hide {readCount}</span>
             </Button>
           )}
           <Button
             onClick={toggleShowSummaries}
             variant="ghost"
             size="sm"
-            className={cn('gap-2', !showSummaries && 'text-muted-foreground')}
+            className={cn('gap-1.5', !showSummaries && 'text-muted-foreground')}
             title={showSummaries ? 'Hide summaries' : 'Show summaries'}
           >
             <Bars3BottomLeftIcon className="h-4 w-4" />
@@ -333,23 +333,11 @@ export default function FeedPage(): React.ReactElement {
             onClick={() => refetch()}
             variant="ghost"
             size="sm"
-            className="gap-2"
+            title="Refresh"
           >
             <ArrowPathIcon className="h-4 w-4" />
-            Refresh
           </Button>
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="mb-4 flex gap-1 border-b border-border">
-        <TabButton isActive={activeTab === 'all'} onClick={() => setActiveTab('all')}>
-          All
-        </TabButton>
-        <TabButton isActive={activeTab === 'digest'} onClick={() => setActiveTab('digest')}>
-          <SparklesIcon className="h-4 w-4" />
-          Digest
-        </TabButton>
       </div>
 
       {/* Search and Sort (only show for All tab) */}
