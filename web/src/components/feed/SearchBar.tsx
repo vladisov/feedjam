@@ -43,7 +43,7 @@ export function SearchBar({
           onFocus={() => setShowHints(true)}
           onBlur={() => setTimeout(() => setShowHints(false), 200)}
           placeholder={placeholder}
-          className="h-10 w-full rounded-xl bg-secondary/50 pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:shadow-sm"
+          className="h-10 w-full rounded-xl bg-secondary/50 pl-10 pr-10 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:bg-card focus:outline-none focus:ring-1 focus:ring-border"
         />
         {value && (
           <button

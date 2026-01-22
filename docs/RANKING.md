@@ -9,7 +9,7 @@ The ranking system considers four factors when scoring items:
 | Factor | Weight | Description |
 |--------|--------|-------------|
 | Interest Match | 40% | How well the item matches user-defined topics |
-| Source Affinity | 30% | Historical like/dislike ratio for the source |
+| Source Affinity | 30% | Historical like/hide ratio for the source |
 | Popularity | 20% | Points and views (log-normalized) |
 | Recency | 10% | How recently the item was published |
 
@@ -36,21 +36,21 @@ The algorithm performs substring matching against the item's title, summary, and
 
 ### 2. Source Affinity (-1.0 to 1.0, normalized to 0.0 - 1.0)
 
-Tracks user engagement with sources based on like/dislike history:
+Tracks user engagement with sources based on like/hide history:
 
 ```
-affinity = (likes - dislikes) / total_interactions
+affinity = (likes - hides) / total_interactions
 ```
 
 | Scenario | Affinity | Normalized |
 |----------|----------|------------|
 | All likes | 1.0 | 1.0 |
-| Equal likes/dislikes | 0.0 | 0.5 |
-| All dislikes | -1.0 | 0.0 |
+| Equal likes/hides | 0.0 | 0.5 |
+| All hides | -1.0 | 0.0 |
 | No history | 0.0 | 0.5 |
 
 **Example:**
-- Source "Hacker News": 8 likes, 2 dislikes
+- Source "Hacker News": 8 likes, 2 hides
 - Affinity: `(8 - 2) / 10 = 0.6`
 - Normalized: `(0.6 + 1.0) / 2 = 0.8`
 
@@ -115,14 +115,14 @@ PUT /users/{user_id}/interests
 DELETE /users/{user_id}/interests/{interest_id}
 ```
 
-### Like/Dislike Items
+### Like/Hide Items
 
 ```bash
-# Toggle like (updates source affinity)
+# Toggle like (updates source affinity positively)
 POST /feed/{user_id}/items/{item_id}/like
 
-# Toggle dislike (updates source affinity)
-POST /feed/{user_id}/items/{item_id}/dislike
+# Toggle hide (updates source affinity negatively)
+POST /feed/{user_id}/items/{item_id}/hide
 ```
 
 ## Database Schema
@@ -144,7 +144,7 @@ POST /feed/{user_id}/items/{item_id}/dislike
 | user_id | int | FK to users |
 | source_name | varchar(255) | Aggregated source identifier |
 | like_count | int | Total likes for this source |
-| dislike_count | int | Total dislikes for this source |
+| hide_count | int | Total hides for this source (negative signal) |
 | created_at | datetime | Creation timestamp |
 | updated_at | datetime | Last update timestamp |
 

@@ -108,6 +108,7 @@ export default function FeedPage(): React.ReactElement {
   const [activeTab, setActiveTab] = useState<FeedTab>('feed')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [localUpdates, setLocalUpdates] = useState<Record<number, Partial<FeedItem['state']>>>({})
+  const [isSpinning, setIsSpinning] = useState(false)
   const { items: rawItems, isLoading, error, refetch } = useFeedQuery()
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const prevRawItemsRef = useRef(rawItems)
@@ -176,16 +177,15 @@ export default function FeedPage(): React.ReactElement {
 
   // Get filtered items based on active tab (needed for keyboard shortcuts)
   const filteredItems = useMemo(() => {
-    let result: FeedItem[]
     if (activeTab === 'digest') {
-      result = applySearch(digestQuery.data ?? [], searchQuery)
-    } else if (needsServerSearch) {
-      result = (serverSearch.data ?? []).map(toFeedItem)
-    } else {
-      result = applySearch(items, searchQuery)
+      return applySearch(digestQuery.data ?? [], searchQuery)
     }
-    // Apply sorting (skip for digest as it's already ranked)
-    return activeTab === 'digest' ? result : sortItems(result, sortOption)
+
+    const result = needsServerSearch
+      ? (serverSearch.data ?? []).map(toFeedItem)
+      : applySearch(items, searchQuery)
+
+    return sortItems(result, sortOption)
   }, [activeTab, digestQuery.data, needsServerSearch, serverSearch.data, items, searchQuery, sortOption])
 
   function handleSortChange(newSort: SortOption): void {
@@ -229,13 +229,13 @@ export default function FeedPage(): React.ReactElement {
   }, [searchQuery, activeTab])
 
   // Keyboard shortcuts (use visible items for navigation)
-  const { selectedIndex, showHelp, setShowHelp } = useKeyboardShortcuts({
+  const { selectedIndex, showHelp, setShowHelp, isKeyboardMode } = useKeyboardShortcuts({
     items: visibleItems,
     onToggleStar: handleToggleStar,
     onToggleLike: handleToggleLike,
     onMarkRead: handleMarkRead,
     onToggleHide: handleToggleHide,
-    onRefresh: () => refetch(),
+    onRefresh: handleRefresh,
     enabled: true,
   })
 
@@ -245,6 +245,13 @@ export default function FeedPage(): React.ReactElement {
     const newValue = !showSummaries
     setShowSummaries(newValue)
     localStorage.setItem('feedShowSummaries', String(newValue))
+  }
+
+  function handleRefresh(): void {
+    setIsSpinning(true)
+    refetch()
+    // Keep spinning for at least 2 seconds
+    setTimeout(() => setIsSpinning(false), 2000)
   }
 
   const isSearching = needsServerSearch && activeTab === 'feed' && serverSearch.isLoading
@@ -285,17 +292,18 @@ export default function FeedPage(): React.ReactElement {
             variant="ghost"
             size="sm"
             className={cn('gap-1.5', !showSummaries && 'text-muted-foreground')}
-            title={showSummaries ? 'Hide summaries' : 'Show summaries'}
+            title={showSummaries ? 'Hide summaries (collapse cards)' : 'Show summaries (expand cards)'}
           >
             <Bars3BottomLeftIcon className="h-4 w-4" />
           </Button>
           <Button
-            onClick={() => refetch()}
+            onClick={handleRefresh}
             variant="ghost"
             size="sm"
-            title="Refresh"
+            title="Refresh feed (R)"
+            disabled={isSpinning}
           >
-            <ArrowPathIcon className="h-4 w-4" />
+            <ArrowPathIcon className={cn('h-4 w-4', isSpinning && 'animate-spin')} />
           </Button>
         </div>
       </div>
@@ -309,7 +317,7 @@ export default function FeedPage(): React.ReactElement {
           <select
             value={sortOption}
             onChange={(e) => handleSortChange(e.target.value as SortOption)}
-            className="h-10 appearance-none rounded-xl bg-secondary/50 pl-3 pr-8 text-sm text-foreground transition-all focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:shadow-sm"
+            className="h-10 appearance-none rounded-xl bg-secondary/50 pl-3 pr-8 text-sm text-foreground transition-all focus:bg-card focus:outline-none focus:ring-1 focus:ring-border"
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -326,6 +334,7 @@ export default function FeedPage(): React.ReactElement {
         items={visibleItems}
         showSummaries={showSummaries}
         selectedIndex={selectedIndex}
+        isKeyboardMode={isKeyboardMode}
         onToggleStar={handleToggleStar}
         onToggleLike={handleToggleLike}
         onMarkRead={handleMarkRead}

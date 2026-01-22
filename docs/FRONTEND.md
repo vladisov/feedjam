@@ -648,6 +648,55 @@ Client-side search with operators in `lib/search.ts`:
 
 Example: `is:liked source:hackernews rust`
 
+## Keyboard Shortcuts
+
+The feed supports vim-style keyboard navigation via `useKeyboardShortcuts` hook.
+
+### Available Shortcuts
+| Key | Action |
+|-----|--------|
+| `j` / `↓` | Move to next item |
+| `k` / `↑` | Move to previous item |
+| `o` / `Enter` | Open article in new tab |
+| `c` | Open comments |
+| `l` | Like/unlike item (heart) |
+| `s` | Save/unsave item (bookmark) |
+| `h` | Hide/unhide item |
+| `r` | Refresh feed |
+| `?` | Toggle help modal |
+| `Escape` | Close help modal |
+
+### Keyboard Mode Detection
+The hook tracks whether the user is navigating via keyboard:
+- `isKeyboardMode` becomes `true` when any shortcut key is pressed
+- `isKeyboardMode` becomes `false` when the user clicks anywhere
+- Selection highlighting only appears when in keyboard mode
+
+```tsx
+const { selectedIndex, isKeyboardMode, showHelp, setShowHelp } = useKeyboardShortcuts({
+  items: visibleItems,
+  onToggleStar: handleToggleStar,
+  onToggleLike: handleToggleLike,
+  onMarkRead: handleMarkRead,
+  onToggleHide: handleToggleHide,
+  onRefresh: handleRefresh,
+  enabled: true,
+})
+
+// Pass to FeedList - selection only shows in keyboard mode
+<FeedList
+  items={visibleItems}
+  selectedIndex={selectedIndex}
+  isKeyboardMode={isKeyboardMode}
+  ...
+/>
+```
+
+### Implementation Notes
+- Shortcuts are disabled when focus is on editable elements (inputs, textareas)
+- Modifier keys (Ctrl, Meta, Alt) disable shortcuts to avoid conflicts
+- Selected item auto-scrolls into view (only in keyboard mode)
+
 ## State Management
 
 - **Auth state**: AuthContext (user info, login/logout/register)

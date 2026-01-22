@@ -22,6 +22,7 @@ interface UseKeyboardShortcutsReturn {
   setSelectedIndex: (index: number) => void
   showHelp: boolean
   setShowHelp: (show: boolean) => void
+  isKeyboardMode: boolean
 }
 
 export function useKeyboardShortcuts({
@@ -35,6 +36,7 @@ export function useKeyboardShortcuts({
 }: UseKeyboardShortcutsOptions): UseKeyboardShortcutsReturn {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
+  const [isKeyboardMode, setIsKeyboardMode] = useState(false)
 
   const selectedItem = items[selectedIndex] ?? null
 
@@ -77,7 +79,6 @@ export function useKeyboardShortcuts({
     openComments,
     onToggleStar,
     onToggleLike,
-    onMarkRead,
     onToggleHide,
     onRefresh,
   ])
@@ -92,12 +93,21 @@ export function useKeyboardShortcuts({
       const action = keyActions.get(e.key)
       if (action) {
         e.preventDefault()
+        setIsKeyboardMode(true)
         action()
       }
     }
 
+    function handleMouseDown(): void {
+      setIsKeyboardMode(false)
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('mousedown', handleMouseDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('mousedown', handleMouseDown)
+    }
   }, [enabled, keyActions])
 
   // Keep selection in bounds when items change
@@ -112,5 +122,6 @@ export function useKeyboardShortcuts({
     setSelectedIndex,
     showHelp,
     setShowHelp,
+    isKeyboardMode,
   }
 }

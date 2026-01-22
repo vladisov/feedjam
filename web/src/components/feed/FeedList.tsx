@@ -7,12 +7,14 @@ interface FeedListProps extends FeedItemActions {
   items: FeedItem[]
   showSummaries?: boolean
   selectedIndex?: number
+  isKeyboardMode?: boolean
 }
 
 export function FeedList({
   items,
   showSummaries = true,
   selectedIndex = -1,
+  isKeyboardMode = false,
   onToggleStar,
   onToggleLike,
   onMarkRead,
@@ -21,10 +23,10 @@ export function FeedList({
   const selectedRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (selectedIndex >= 0 && selectedRef.current) {
+    if (isKeyboardMode && selectedIndex >= 0 && selectedRef.current) {
       selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-  }, [selectedIndex])
+  }, [isKeyboardMode, selectedIndex])
 
   if (items.length === 0) {
     return (
@@ -50,7 +52,7 @@ export function FeedList({
           ref={index === selectedIndex ? selectedRef : null}
           item={item}
           showSummary={showSummaries}
-          isSelected={index === selectedIndex}
+          isSelected={isKeyboardMode && index === selectedIndex}
           onToggleStar={onToggleStar}
           onToggleLike={onToggleLike}
           onMarkRead={onMarkRead}

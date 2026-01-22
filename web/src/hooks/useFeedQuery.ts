@@ -13,6 +13,7 @@ export function useFeedQuery({ enabled = true }: UseFeedQueryOptions = {}) {
   const {
     data: feed,
     isLoading,
+    isFetching,
     error,
     refetch,
   } = useQuery<UserFeed, Error>({
@@ -30,6 +31,7 @@ export function useFeedQuery({ enabled = true }: UseFeedQueryOptions = {}) {
     feed,
     items,
     isLoading,
+    isFetching,
     error: error?.message || null,
     refetch,
   }

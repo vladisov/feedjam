@@ -94,7 +94,7 @@ export default function SubscriptionsPage(): React.ReactElement {
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             placeholder="Enter RSS feed URL..."
-            className="w-full sm:flex-1 rounded-lg border border-input bg-background px-3 sm:px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="h-10 w-full sm:flex-1 rounded-xl bg-secondary/50 px-4 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:bg-card focus:outline-none focus:ring-1 focus:ring-border"
             required
           />
           <Button type="submit" disabled={isAdding || !newUrl.trim()} className="flex-shrink-0">
@@ -126,10 +126,8 @@ export default function SubscriptionsPage(): React.ReactElement {
             <div
               key={sub.id}
               className={cn(
-                'flex items-start sm:items-center justify-between gap-2 rounded-lg border bg-card p-3 sm:p-4',
-                getHealthStatus(sub.last_run, sub.created_at) === 'error'
-                  ? 'border-red-500/50'
-                  : 'border-border'
+                'flex items-start sm:items-center justify-between gap-2 rounded-xl bg-card p-4 shadow-sm ring-1 ring-border/50',
+                getHealthStatus(sub.last_run, sub.created_at) === 'error' && 'ring-red-500/50'
               )}
             >
               <div className="flex items-start gap-2 sm:gap-3 min-w-0 flex-1">

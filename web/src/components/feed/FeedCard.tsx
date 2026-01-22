@@ -19,6 +19,7 @@ interface ActionButtonProps {
   title: string
   OutlineIcon: React.ComponentType<{ className?: string }>
   SolidIcon: React.ComponentType<{ className?: string }>
+  pulse?: boolean
 }
 
 function ActionButton({
@@ -28,6 +29,7 @@ function ActionButton({
   title,
   OutlineIcon,
   SolidIcon,
+  pulse,
 }: ActionButtonProps): React.ReactElement {
   const Icon = isActive ? SolidIcon : OutlineIcon
   return (
@@ -39,7 +41,10 @@ function ActionButton({
       )}
       title={title}
     >
-      <Icon className={cn('h-5 w-5', isActive && activeColor)} />
+      <Icon className={cn(
+        'h-5 w-5 transition-transform',
+        pulse && isActive && 'animate-heartbeat'
+      )} />
     </button>
   )
 }
@@ -78,8 +83,8 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
     <article
       ref={ref}
       className={cn(
-        'group rounded-xl bg-card p-4 sm:p-5 shadow-sm ring-1 ring-border/50 transition-all hover:shadow-md hover:ring-border',
-        isSelected && 'sm:ring-2 sm:ring-primary',
+        'group rounded-xl bg-card p-4 sm:p-5 shadow-sm ring-1 ring-border/50 transition-all duration-200 hover:shadow-md hover:ring-border',
+        isSelected && 'sm:ring-1 sm:ring-primary/50 sm:bg-primary/5',
         isHidden && 'opacity-40'
       )}
     >
@@ -101,9 +106,10 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
             onClick={() => onToggleLike?.(item)}
             isActive={isLiked}
             activeColor="text-red-600"
-            title="Like - more of this"
+            title="Love - more of this"
             OutlineIcon={HeartIcon}
             SolidIcon={HeartIconSolid}
+            pulse={isLiked}
           />
           <ActionButton
             onClick={() => onToggleStar?.(item)}
@@ -126,7 +132,7 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
 
       {/* Source + Time */}
       <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground/70">{item.source_name}</span>
+        <span className="font-medium text-foreground/60">{item.source_name}</span>
         {item.created_at && (
           <>
             <span>·</span>
@@ -147,7 +153,7 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
         <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
           {item.points != null && item.points > 0 && (
             <span>
-              <span className="font-medium text-foreground/80">{item.points}</span> points
+              <span className="font-medium text-foreground/70">{item.points}</span> points
             </span>
           )}
           {item.comments_url && (
