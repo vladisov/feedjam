@@ -140,7 +140,7 @@ class FeedStorage:
         self.db.flush()
 
         for item in user_feed.user_feed_items:
-            item_data = item.model_dump(exclude={"state"})
+            item_data = item.model_dump(exclude={"state", "source_type"})
             item_data["user_feed_id"] = new_user_feed.id
             new_item = UserFeedItem(**item_data)
             self.db.add(new_item)
