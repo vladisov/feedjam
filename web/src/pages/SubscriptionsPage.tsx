@@ -138,13 +138,13 @@ export default function SubscriptionsPage(): React.ReactElement {
                   <HealthIndicator subscription={sub} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground text-sm sm:text-base">
+                  <p className="truncate text-[15px] sm:text-base font-semibold tracking-tight text-foreground">
                     {sub.source_name}
                   </p>
-                  <p className="truncate text-xs sm:text-sm text-muted-foreground">
+                  <p className="truncate text-xs text-muted-foreground">
                     {sub.resource_url}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1.5 text-xs text-muted-foreground">
                     {formatDate(sub.created_at)}
                     {sub.item_count > 0 && ` · ${sub.item_count} items`}
                   </p>

@@ -140,7 +140,7 @@ export default function SettingsPage(): React.ReactElement {
       <div className="space-y-4 sm:space-y-6">
         {/* Interests */}
         <section className="rounded-xl bg-card p-4 sm:p-6 shadow-sm ring-1 ring-border/50">
-          <h3 className="mb-4 text-lg font-medium text-foreground">
+          <h3 className="mb-4 text-lg font-semibold text-foreground">
             Interests
           </h3>
           <p className="mb-4 text-sm text-muted-foreground">
@@ -219,7 +219,7 @@ export default function SettingsPage(): React.ReactElement {
 
         {/* Email Inbox */}
         <section className="rounded-xl bg-card p-4 sm:p-6 shadow-sm ring-1 ring-border/50">
-          <h3 className="mb-4 text-lg font-medium text-foreground">
+          <h3 className="mb-4 text-lg font-semibold text-foreground">
             Email Inbox
           </h3>
           <p className="mb-4 text-sm text-muted-foreground">
@@ -269,7 +269,7 @@ export default function SettingsPage(): React.ReactElement {
 
         {/* API Keys */}
         <section className="rounded-xl bg-card p-4 sm:p-6 shadow-sm ring-1 ring-border/50">
-          <h3 className="mb-4 text-lg font-medium text-foreground">API Keys</h3>
+          <h3 className="mb-4 text-lg font-semibold text-foreground">API Keys</h3>
           <p className="mb-4 text-sm text-muted-foreground">
             Provide your own API keys for AI-powered features like summarization
             and intelligent ranking.
@@ -339,7 +339,7 @@ export default function SettingsPage(): React.ReactElement {
 
         {/* Appearance */}
         <section className="rounded-xl bg-card p-4 sm:p-6 shadow-sm ring-1 ring-border/50">
-          <h3 className="mb-4 text-lg font-medium text-foreground">
+          <h3 className="mb-4 text-lg font-semibold text-foreground">
             Appearance
           </h3>
           <div className="flex items-center justify-between">
