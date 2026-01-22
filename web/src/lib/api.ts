@@ -150,30 +150,19 @@ function get<T>(url: string): Promise<T> {
 
 function parseApiError(errorData: unknown, fallback: string): string {
   if (!errorData || typeof errorData !== 'object') return fallback
-
   const data = errorData as Record<string, unknown>
 
   // FastAPI validation errors: { detail: [{ loc, msg, type }, ...] }
   if (Array.isArray(data.detail) && data.detail.length > 0) {
     const firstError = data.detail[0] as { loc?: string[]; msg?: string }
-    const field = firstError.loc?.at(-1) // e.g., "password"
-    const msg = firstError.msg // e.g., "String should have at least 8 characters"
-    if (field && msg) {
-      return `${field}: ${msg}`
-    }
+    const field = firstError.loc?.at(-1)
+    const msg = firstError.msg
+    if (field && msg) return `${field}: ${msg}`
     if (msg) return msg
   }
 
-  // Simple string detail: { detail: "Error message" }
-  if (typeof data.detail === 'string') {
-    return data.detail
-  }
-
-  // Generic message field
-  if (typeof data.message === 'string') {
-    return data.message
-  }
-
+  if (typeof data.detail === 'string') return data.detail
+  if (typeof data.message === 'string') return data.message
   return fallback
 }
 
@@ -229,12 +218,13 @@ export const api = {
       summary: item.summary,
       description: item.description,
       source_name: item.source_name,
+      source_type: item.source_type,
       article_url: item.article_url,
       comments_url: item.comments_url,
       points: item.points,
       views: item.views,
       rank_score: item.rank_score,
-      state: { id: 0, ...item.state },
+      state: item.state,
       created_at: item.created_at,
       updated_at: null,
     }))
@@ -254,6 +244,17 @@ export const api = {
 
   hideRead: (): Promise<{ hidden_count: number }> =>
     post(`${API_URL}/feed/hide-read`),
+
+  batchUpdateStates: (
+    updates: Array<{
+      feed_item_id: number
+      read?: boolean
+      like?: boolean
+      star?: boolean
+      hide?: boolean
+    }>
+  ): Promise<{ updated_count: number }> =>
+    postJson(`${API_URL}/feed/items/batch-state`, { updates }),
 
   markAllRead: (): Promise<{ read_count: number }> =>
     post(`${API_URL}/feed/mark-all-read`),

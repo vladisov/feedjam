@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 
 from api.exceptions import EntityNotFoundException
 from schemas import UserFeedOut
-from schemas.feeds import SearchResultItem, UserFeedItemIn
+from schemas.feeds import BatchStateUpdateIn, BatchStateUpdateOut, SearchResultItem, UserFeedItemIn
 from service.feed_service import FeedService
 from utils.dependencies import get_current_user_id, get_feed_service
 
@@ -112,6 +112,21 @@ def mark_all_read(
 ):
     """Mark all unread items as read for a user."""
     return feed_service.mark_all_read(user_id)
+
+
+@router.post("/items/batch-state", response_model=BatchStateUpdateOut)
+def batch_update_states(
+    batch: BatchStateUpdateIn,
+    user_id: int = Depends(get_current_user_id),
+    feed_service: FeedService = Depends(get_feed_service),
+):
+    """Update states for multiple feed items at once.
+
+    Useful for bulk operations like marking multiple items as read.
+    """
+    updates = [update.model_dump() for update in batch.updates]
+    updated_count = feed_service.batch_update_states(user_id, updates)
+    return BatchStateUpdateOut(updated_count=updated_count)
 
 
 @router.get("/search", response_model=list[SearchResultItem])

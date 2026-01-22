@@ -27,9 +27,9 @@ export function KeyboardShortcutsHelp({ isOpen, onClose }: KeyboardShortcutsHelp
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fade-in" onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg"
+        className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

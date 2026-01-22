@@ -5,6 +5,7 @@ export interface FeedItem {
   summary: string | null
   description: string | null
   source_name: string
+  source_type: string
   article_url: string | null
   comments_url: string | null
   points: number | null
@@ -23,9 +24,8 @@ export interface ItemStateFlags {
   hide: boolean
 }
 
-export interface FeedItemState extends ItemStateFlags {
-  id: number
-}
+/** FeedItemState is just the base flags (id was vestigial and removed) */
+export type FeedItemState = ItemStateFlags
 
 export interface UserFeed {
   id: number
@@ -38,9 +38,9 @@ export interface UserFeed {
 
 export interface Subscription {
   id: number
-  user_id: number
   source_id: number
   source_name: string
+  source_type: string
   resource_url: string
   is_active: boolean
   created_at: string
@@ -100,6 +100,7 @@ export interface SearchResultItem {
   title: string
   link: string
   source_name: string
+  source_type: string
   description: string | null
   article_url: string | null
   comments_url: string | null
@@ -112,12 +113,13 @@ export interface SearchResultItem {
   state: SearchResultState
 }
 
-/** API response shape for digest items */
+/** API response shape for digest items (matches UserFeedItemIn from backend) */
 export interface DigestItem {
   feed_item_id: number
   user_id: number
   title: string
   source_name: string
+  source_type: string
   state: ItemStateFlags
   description: string
   article_url: string | null
@@ -131,6 +133,7 @@ export interface DigestItem {
 
 export interface SearchParams {
   liked?: boolean
+  disliked?: boolean
   starred?: boolean
   read?: boolean
   hidden?: boolean

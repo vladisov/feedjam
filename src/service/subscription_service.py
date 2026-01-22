@@ -67,18 +67,17 @@ class SubscriptionService:
             return SubscriptionOut.model_validate(subscription)
         return None
 
+    def get_owner_id(self, subscription_id: int) -> int | None:
+        """Get the owner user_id for a subscription. Used for ownership verification."""
+        subscription = self.subscription_storage.get(subscription_id)
+        return subscription.user_id if subscription else None
+
     def get_by_user(self, user_id: int) -> list[SubscriptionOut]:
-        """Get all subscriptions for a user."""
-        subscriptions = self.subscription_storage.get_by_user(user_id)
+        """Get all subscriptions for a user.
 
-        # Enrich with source name and URL
-        for sub in subscriptions:
-            source = self.source_storage.get(sub.source_id)
-            if source:
-                sub.source_name = source.name
-                sub.resource_url = source.resource_url
-
-        return subscriptions
+        Source info (name, type, URL) is populated via Subscription model properties.
+        """
+        return self.subscription_storage.get_by_user(user_id)
 
     def get_all(self) -> list[SubscriptionOut]:
         """Get all active subscriptions."""

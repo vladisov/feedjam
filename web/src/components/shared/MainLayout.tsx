@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from './Button'
+import { InstallPrompt } from './InstallPrompt'
 
 const navItems = [
   { to: '/', label: 'Feed', icon: NewspaperIcon },
@@ -72,6 +73,9 @@ export function MainLayout() {
       <main className="mx-auto max-w-4xl px-4 sm:px-6 py-6">
         <Outlet />
       </main>
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   )
 }

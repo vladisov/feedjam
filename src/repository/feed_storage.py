@@ -17,6 +17,15 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _get_source_type_map(db: Session, source_names: list[str]) -> dict[str, str]:
+    """Get a mapping of source_name -> source_type for the given source names."""
+    if not source_names:
+        return {}
+    stmt = select(Source.name, Source.source_type).where(Source.name.in_(source_names))
+    results = db.execute(stmt).all()
+    return dict(results)
+
+
 def _sanitize_string(value: str | None) -> str | None:
     """Remove NUL characters that PostgreSQL doesn't allow in text fields."""
     if value is None:
@@ -70,8 +79,17 @@ class FeedStorage:
         )
         results = self.db.execute(items_stmt).all()
 
-        # Build response with mapped state
-        feed_items = [self._build_user_feed_item_out(item, state) for item, state in results]
+        # Batch fetch source types for all items
+        source_names = list({item.source_name for item, _ in results if item.source_name})
+        source_type_map = _get_source_type_map(self.db, source_names)
+
+        # Build response with mapped state and source_type
+        feed_items = [
+            self._build_user_feed_item_out(
+                item, state, source_type_map.get(item.source_name, "rss")
+            )
+            for item, state in results
+        ]
 
         return UserFeedOut(
             id=user_feed.id,
@@ -83,10 +101,9 @@ class FeedStorage:
         )
 
     def _build_user_feed_item_out(
-        self, item: UserFeedItem, state: UserItemState | None
+        self, item: UserFeedItem, state: UserItemState | None, source_type: str = "rss"
     ) -> UserFeedItemOut:
         """Build UserFeedItemOut with state from persistent UserItemState."""
-        # Map UserItemState fields to ItemState fields (or use defaults)
         item_state = ItemState(
             read=state.read if state else False,
             like=state.liked if state else False,
@@ -101,6 +118,7 @@ class FeedStorage:
             title=item.title,
             description=item.description or "",
             source_name=item.source_name,
+            source_type=source_type,
             article_url=item.article_url,
             comments_url=item.comments_url,
             points=item.points,
@@ -113,11 +131,7 @@ class FeedStorage:
         )
 
     def save_user_feed(self, user_feed: UserFeedIn) -> int:
-        """Save a new user feed.
-
-        Note: State is NOT stored in UserFeedItemState anymore.
-        State comes from persistent UserItemState on read.
-        """
+        """Save a new user feed. State comes from persistent UserItemState on read."""
         new_user_feed = UserFeed(
             user_id=user_feed.user_id,
             is_active=user_feed.is_active,

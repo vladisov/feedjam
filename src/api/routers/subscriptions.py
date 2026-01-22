@@ -15,16 +15,15 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 
-def _get_user_subscription(
+def _verify_subscription_ownership(
     subscription_id: int,
     user_id: int,
     subscription_service: SubscriptionService,
-) -> SubscriptionOut:
-    """Get a subscription and verify it belongs to the user."""
-    sub = subscription_service.get(subscription_id)
-    if not sub or sub.user_id != user_id:
+) -> None:
+    """Verify a subscription belongs to the user."""
+    owner_id = subscription_service.get_owner_id(subscription_id)
+    if owner_id is None or owner_id != user_id:
         raise EntityNotFoundException("Subscription", subscription_id)
-    return sub
 
 
 @router.post("", response_model=SubscriptionOut)
@@ -84,7 +83,7 @@ def delete_subscription(
     subscription_service: SubscriptionService = Depends(get_subscription_service),
 ):
     """Delete a subscription."""
-    _get_user_subscription(subscription_id, user_id, subscription_service)
+    _verify_subscription_ownership(subscription_id, user_id, subscription_service)
     subscription_service.delete(subscription_id, user_id=user_id)
     return {"status": "ok"}
 
@@ -107,7 +106,7 @@ def refetch_subscription(
     subscription_service: SubscriptionService = Depends(get_subscription_service),
 ):
     """Manually trigger a refetch for a subscription."""
-    _get_user_subscription(subscription_id, user_id, subscription_service)
+    _verify_subscription_ownership(subscription_id, user_id, subscription_service)
 
     background_tasks.add_task(fetch_subscription, subscription_id)
     background_tasks.add_task(generate_user_feed, user_id)

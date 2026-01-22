@@ -63,6 +63,7 @@ class UserFeedItemIn(BaseModel):
     user_id: int
     title: str
     source_name: str
+    source_type: str = "rss"
     state: ItemState
     description: str = ""
     article_url: str | None = None
@@ -85,6 +86,7 @@ class UserFeedItemOut(BaseModel):
     title: str
     description: str
     source_name: str | None = None
+    source_type: str = "rss"
     article_url: str | None = None
     comments_url: str | None = None
     points: int | None = None
@@ -117,6 +119,29 @@ class UserFeedOut(BaseModel):
     user_feed_items: list[UserFeedItemOut]
 
 
+class ItemStateUpdate(BaseModel):
+    """Single item state update."""
+
+    feed_item_id: int
+    read: bool | None = None
+    like: bool | None = None
+    dislike: bool | None = None
+    star: bool | None = None
+    hide: bool | None = None
+
+
+class BatchStateUpdateIn(BaseModel):
+    """Batch state update request."""
+
+    updates: list[ItemStateUpdate]
+
+
+class BatchStateUpdateOut(BaseModel):
+    """Batch state update response."""
+
+    updated_count: int
+
+
 class SearchResultItem(BaseModel):
     """Search result item - FeedItem with user state."""
 
@@ -127,6 +152,7 @@ class SearchResultItem(BaseModel):
     title: str
     link: str
     source_name: str
+    source_type: str = "rss"
     description: str | None = None
     article_url: str | None = None
     comments_url: str | None = None

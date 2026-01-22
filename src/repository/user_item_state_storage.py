@@ -4,6 +4,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from model.feed import FeedItem
+from model.source import Source
 from model.user_item_state import UserItemState
 
 
@@ -62,24 +63,21 @@ class UserItemStateStorage:
         state = self.get_or_create(user_id, feed_item_id)
         state.liked = not state.liked
         if state.liked:
-            # Like clears hidden (mutually exclusive)
             state.hidden = False
         self.db.commit()
-        source_name = self._get_source_name(feed_item_id)
-        return state.liked, source_name
+        return state.liked, self._get_source_name(feed_item_id)
 
     def toggle_disliked(self, user_id: int, feed_item_id: int) -> tuple[bool, str | None]:
         """Toggle disliked state. Returns (new_disliked_state, source_name)."""
         state = self.get_or_create(user_id, feed_item_id)
-        if state.liked:
-            state.liked = False
         state.disliked = not state.disliked
+        if state.disliked:
+            state.liked = False
         self.db.commit()
-        source_name = self._get_source_name(feed_item_id)
-        return state.disliked, source_name
+        return state.disliked, self._get_source_name(feed_item_id)
 
     def toggle_starred(self, user_id: int, feed_item_id: int) -> bool:
-        """Toggle starred state. Returns new_starred_state."""
+        """Toggle starred state."""
         state = self.get_or_create(user_id, feed_item_id)
         state.starred = not state.starred
         self.db.commit()
@@ -88,20 +86,16 @@ class UserItemStateStorage:
     def toggle_hidden(self, user_id: int, feed_item_id: int) -> tuple[bool, str | None]:
         """Toggle hidden state. Returns (new_hidden_state, source_name).
 
-        Hide acts as a negative signal for ranking. When hiding, clears liked.
-        When unhiding, also marks the item as unread to give it a fresh start.
+        Hide clears liked. Unhiding marks as unread for a fresh start.
         """
         state = self.get_or_create(user_id, feed_item_id)
         state.hidden = not state.hidden
         if state.hidden:
-            # Hide clears liked (mutually exclusive)
             state.liked = False
         else:
-            # When unhiding, mark as unread so item appears fresh
             state.read = False
         self.db.commit()
-        source_name = self._get_source_name(feed_item_id)
-        return state.hidden, source_name
+        return state.hidden, self._get_source_name(feed_item_id)
 
     def _get_source_name(self, feed_item_id: int) -> str | None:
         """Get source_name for a feed item."""
@@ -141,13 +135,9 @@ class UserItemStateStorage:
         return list(self.db.execute(stmt).scalars().all())
 
     def get_unread_unhidden_item_ids(self, user_id: int, feed_item_ids: list[int]) -> list[int]:
-        """Get feed_item_ids that are unread and not hidden.
-
-        Items without UserItemState are considered unread.
-        """
+        """Get feed_item_ids that are unread and not hidden."""
         if not feed_item_ids:
             return []
-        # Get items that ARE read or hidden
         stmt = select(UserItemState.feed_item_id).where(
             and_(
                 UserItemState.user_id == user_id,
@@ -188,11 +178,12 @@ class UserItemStateStorage:
     ) -> list[dict]:
         """Search user's historical items by state filters.
 
-        Returns dicts with FeedItem fields plus user state.
+        Returns dicts with FeedItem fields plus user state and source_type.
         """
         stmt = (
-            select(FeedItem, UserItemState)
+            select(FeedItem, UserItemState, Source.source_type)
             .join(UserItemState, UserItemState.feed_item_id == FeedItem.id)
+            .outerjoin(Source, Source.name == FeedItem.source_name)
             .where(UserItemState.user_id == user_id)
         )
 
@@ -224,11 +215,13 @@ class UserItemStateStorage:
         stmt = stmt.order_by(UserItemState.updated_at.desc()).offset(offset).limit(limit)
 
         return [
-            self._build_search_result(feed_item, state)
-            for feed_item, state in self.db.execute(stmt).all()
+            self._build_search_result(feed_item, state, source_type or "rss")
+            for feed_item, state, source_type in self.db.execute(stmt).all()
         ]
 
-    def _build_search_result(self, feed_item: FeedItem, state: UserItemState) -> dict:
+    def _build_search_result(
+        self, feed_item: FeedItem, state: UserItemState, source_type: str = "rss"
+    ) -> dict:
         """Build a search result dict from FeedItem and UserItemState."""
         return {
             "id": feed_item.id,
@@ -236,6 +229,7 @@ class UserItemStateStorage:
             "title": feed_item.title,
             "link": feed_item.link,
             "source_name": feed_item.source_name,
+            "source_type": source_type,
             "description": feed_item.description,
             "article_url": feed_item.article_url,
             "comments_url": feed_item.comments_url,

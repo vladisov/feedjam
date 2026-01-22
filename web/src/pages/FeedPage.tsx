@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
@@ -17,8 +17,6 @@ import type { FeedItem, SearchResultItem } from '@/types/feed'
 type FeedTab = 'feed' | 'digest'
 type SortOption = 'newest' | 'oldest' | 'score' | 'points' | 'source'
 
-const PAGE_SIZE = 20
-
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'newest', label: 'Newest' },
   { value: 'oldest', label: 'Oldest' },
@@ -28,15 +26,12 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 ]
 
 function getStoredString(key: string, defaultValue: string): string {
-  if (typeof window === 'undefined') return defaultValue
   return localStorage.getItem(key) ?? defaultValue
 }
 
 function getStoredBoolean(key: string, defaultValue: boolean): boolean {
-  if (typeof window === 'undefined') return defaultValue
   const stored = localStorage.getItem(key)
-  if (stored === null) return defaultValue
-  return stored !== 'false'
+  return stored === null ? defaultValue : stored !== 'false'
 }
 
 function getDateValue(item: FeedItem): number {
@@ -89,12 +84,13 @@ function toFeedItem(item: SearchResultItem): FeedItem {
     summary: item.summary,
     description: item.description,
     source_name: item.source_name,
+    source_type: item.source_type,
     article_url: item.article_url,
     comments_url: item.comments_url,
     points: item.points,
     views: item.views,
     rank_score: 0,
-    state: { id: 0, ...item.state },
+    state: { ...item.state },
     created_at: item.created_at,
     updated_at: item.updated_at,
   }
@@ -105,18 +101,14 @@ export default function FeedPage(): React.ReactElement {
   const [showSummaries, setShowSummaries] = useState(() => getStoredBoolean('feedShowSummaries', true))
   const [sortOption, setSortOption] = useState<SortOption>(() => getStoredString('feedSortOption', 'newest') as SortOption)
   const [activeTab, setActiveTab] = useState<FeedTab>('feed')
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [localUpdates, setLocalUpdates] = useState<Record<number, Partial<FeedItem['state']>>>({})
   const [isSpinning, setIsSpinning] = useState(false)
   const { items: rawItems, isLoading, error, refetch } = useFeedQuery()
-  const loadMoreRef = useRef<HTMLDivElement>(null)
-  const prevRawItemsRef = useRef(rawItems)
 
   // Clear local updates when feed data changes (on refetch)
   useEffect(() => {
-    if (rawItems !== prevRawItemsRef.current && rawItems.length > 0) {
+    if (rawItems.length > 0) {
       setLocalUpdates({})
-      prevRawItemsRef.current = rawItems
     }
   }, [rawItems])
 
@@ -202,46 +194,11 @@ export default function FeedPage(): React.ReactElement {
   function handleSortChange(newSort: SortOption): void {
     setSortOption(newSort)
     localStorage.setItem('feedSortOption', newSort)
-    setVisibleCount(PAGE_SIZE) // Reset pagination on sort change
   }
 
-  const visibleItems = useMemo(() => filteredItems.slice(0, visibleCount), [filteredItems, visibleCount])
-
-  const hasMore = visibleCount < filteredItems.length
-
-  // Load more when scrolling to bottom
-  const loadMore = useCallback(() => {
-    if (hasMore) {
-      setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredItems.length))
-    }
-  }, [hasMore, filteredItems.length])
-
-  // Intersection observer for infinite scroll
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && hasMore) {
-          loadMore()
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [hasMore, loadMore])
-
-  // Reset pagination when filters change
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE)
-  }, [searchQuery, activeTab])
-
-  // Keyboard shortcuts (use visible items for navigation)
+  // Keyboard shortcuts
   const { selectedIndex, showHelp, setShowHelp, isKeyboardMode } = useKeyboardShortcuts({
-    items: visibleItems,
+    items: filteredItems,
     onToggleStar: handleToggleStar,
     onToggleLike: handleToggleLike,
     onMarkRead: handleMarkRead,
@@ -348,7 +305,7 @@ export default function FeedPage(): React.ReactElement {
 
       {/* Feed list */}
       <FeedList
-        items={visibleItems}
+        items={filteredItems}
         showSummaries={showSummaries}
         selectedIndex={selectedIndex}
         isKeyboardMode={isKeyboardMode}
@@ -357,13 +314,6 @@ export default function FeedPage(): React.ReactElement {
         onMarkRead={handleMarkRead}
         onToggleHide={handleToggleHide}
       />
-
-      {/* Infinite scroll trigger */}
-      {hasMore && (
-        <div ref={loadMoreRef} className="flex justify-center py-8">
-          <span className="text-sm text-muted-foreground">Loading more...</span>
-        </div>
-      )}
 
       {/* Keyboard shortcuts help */}
       <KeyboardShortcutsHelp isOpen={showHelp} onClose={() => setShowHelp(false)} />

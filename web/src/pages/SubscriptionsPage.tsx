@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSubscriptionsQuery } from '@/hooks/useSubscriptionsQuery'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
 import { Button } from '@/components/shared/Button'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { PlusIcon, RssIcon, TrashIcon, ExclamationTriangleIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { cn, formatDate } from '@/lib/utils'
 import type { Subscription } from '@/types/feed'
@@ -117,13 +118,11 @@ export default function SubscriptionsPage(): React.ReactElement {
 
       {/* Subscriptions list */}
       {subscriptions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <RssIcon className="mb-4 h-12 w-12 text-muted-foreground" />
-          <p className="text-lg font-medium text-foreground">No subscriptions yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add an RSS feed URL above to get started
-          </p>
-        </div>
+        <EmptyState
+          icon={<RssIcon />}
+          title="No subscriptions yet"
+          description="Add an RSS feed URL above to get started"
+        />
       ) : (
         <div className="space-y-2">
           {subscriptions.map((sub) => (

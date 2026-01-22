@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react'
+import { useWindowVirtualizer } from '@tanstack/react-virtual'
+import { NewspaperIcon } from '@heroicons/react/24/outline'
 import { FeedCard } from './FeedCard'
+import { EmptyState } from '@/components/shared/EmptyState'
 import type { FeedItemActions } from '@/types/actions'
 import type { FeedItem } from '@/types/feed'
 
@@ -20,45 +23,65 @@ export function FeedList({
   onMarkRead,
   onToggleHide,
 }: FeedListProps): React.ReactElement {
-  const selectedRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
+  const virtualizer = useWindowVirtualizer({
+    count: items.length,
+    estimateSize: () => (showSummaries ? 180 : 100),
+    overscan: 5,
+    scrollMargin: listRef.current?.offsetTop ?? 0,
+  })
+
+  const virtualItems = virtualizer.getVirtualItems()
+
+  // Scroll to selected item when using keyboard navigation
   useEffect(() => {
-    if (isKeyboardMode && selectedIndex >= 0 && selectedRef.current) {
-      selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (isKeyboardMode && selectedIndex >= 0) {
+      virtualizer.scrollToIndex(selectedIndex, { align: 'center', behavior: 'smooth' })
     }
-  }, [isKeyboardMode, selectedIndex])
+  }, [isKeyboardMode, selectedIndex, virtualizer])
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="rounded-full bg-secondary p-4 mb-4">
-          <svg className="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-          </svg>
-        </div>
-        <p className="text-lg font-semibold text-foreground">No items yet</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Add some subscriptions to get started
-        </p>
-      </div>
+      <EmptyState
+        icon={<NewspaperIcon />}
+        title="No items yet"
+        description="Add some subscriptions to get started"
+        className="py-20"
+      />
     )
   }
 
   return (
-    <div className="space-y-4">
-      {items.map((item, index) => (
-        <FeedCard
-          key={item.id}
-          ref={index === selectedIndex ? selectedRef : null}
-          item={item}
-          showSummary={showSummaries}
-          isSelected={isKeyboardMode && index === selectedIndex}
-          onToggleStar={onToggleStar}
-          onToggleLike={onToggleLike}
-          onMarkRead={onMarkRead}
-          onToggleHide={onToggleHide}
-        />
-      ))}
+    <div ref={listRef}>
+      <div
+        className="relative w-full"
+        style={{ height: virtualizer.getTotalSize() }}
+      >
+        {virtualItems.map((virtualItem) => {
+          const item = items[virtualItem.index]
+          if (!item) return null
+          return (
+            <div
+              key={item.id}
+              data-index={virtualItem.index}
+              ref={virtualizer.measureElement}
+              className="absolute left-0 top-0 w-full pb-4"
+              style={{ transform: `translateY(${virtualItem.start - virtualizer.options.scrollMargin}px)` }}
+            >
+              <FeedCard
+                item={item}
+                showSummary={showSummaries}
+                isSelected={isKeyboardMode && virtualItem.index === selectedIndex}
+                onToggleStar={onToggleStar}
+                onToggleLike={onToggleLike}
+                onMarkRead={onMarkRead}
+                onToggleHide={onToggleHide}
+              />
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -39,9 +39,9 @@ class SubscriptionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    user_id: int
     source_id: int
     source_name: str | None = None
+    source_type: str = "rss"
     resource_url: str | None = None
     is_active: bool
     created_at: datetime

@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from api.exceptions import EntityNotFoundException, ParserNotFoundException
 from model.feed import FeedItem
+from model.source import Source
 from repository.feed_storage import FeedStorage
 from repository.like_history_storage import LikeHistoryStorage
 from repository.source_storage import SourceStorage
@@ -118,18 +119,15 @@ class FeedService:
         return self.feed_storage.get_user_feed(user_id)
 
     def get_daily_digest(self, user_id: int, top_n: int = 5) -> list[UserFeedItemIn]:
-        """Get top N items from the last 24 hours, ranked by interests.
-
-        Returns a digest of the best items across all subscribed sources.
-        """
+        """Get top N items from the last 24 hours, ranked by interests."""
         recent_items = self.feed_storage.get_recent_items_by_user(user_id, hours=24, limit=100)
-
         if not recent_items:
             return []
 
-        # Fetch user states for all items in batch
         feed_item_ids = [item.id for item in recent_items]
         states_map = self.user_item_state_storage.get_states_batch(user_id, feed_item_ids)
+        source_names = list({item.source_name for item in recent_items if item.source_name})
+        source_type_map = self._get_source_type_map(source_names)
 
         def get_item_state(feed_item_id: int) -> ItemState:
             state = states_map.get(feed_item_id)
@@ -144,7 +142,9 @@ class FeedService:
             )
 
         items = [
-            self._feed_item_to_user_feed_item(item, user_id, get_item_state(item.id))
+            self._feed_item_to_user_feed_item(
+                item, user_id, get_item_state(item.id), source_type_map.get(item.source_name, "rss")
+            )
             for item in recent_items
         ]
         ranked = self.ranking_service.compute_rank_scores(user_id, items)
@@ -199,10 +199,7 @@ class FeedService:
         return {"starred": is_starred}
 
     def toggle_hide(self, user_id: int, feed_item_id: int) -> dict:
-        """Toggle hide for a feed item.
-
-        Hide acts as a negative signal for ranking (decreases source affinity).
-        """
+        """Toggle hide for a feed item (negative signal for ranking)."""
         is_hidden, source_name = self.user_item_state_storage.toggle_hidden(user_id, feed_item_id)
         if source_name:
             self._update_like_history(user_id, source_name, is_hidden, is_like=False)
@@ -241,6 +238,44 @@ class FeedService:
             self.user_item_state_storage.bulk_set_read(user_id, to_read)
         return {"read_count": len(to_read)}
 
+    def batch_update_states(self, user_id: int, updates: list[dict]) -> int:
+        """Update states for multiple items at once.
+
+        Each update dict should have feed_item_id and optional state fields.
+        Returns count of updated items.
+        """
+        updated = 0
+        for update in updates:
+            feed_item_id = update.get("feed_item_id")
+            if not feed_item_id:
+                continue
+
+            # Get or create state
+            state = self.user_item_state_storage.get_or_create(user_id, feed_item_id)
+
+            # Apply updates (only if field is explicitly set)
+            if update.get("read") is not None:
+                state.read = update["read"]
+            if update.get("like") is not None:
+                state.liked = update["like"]
+                if update["like"]:
+                    state.hidden = False  # Like clears hidden
+            if update.get("dislike") is not None:
+                state.disliked = update["dislike"]
+                if update["dislike"]:
+                    state.liked = False  # Dislike clears like
+            if update.get("star") is not None:
+                state.starred = update["star"]
+            if update.get("hide") is not None:
+                state.hidden = update["hide"]
+                if update["hide"]:
+                    state.liked = False  # Hide clears like
+
+            updated += 1
+
+        self.feed_storage.db.commit()
+        return updated
+
     def search_items(
         self,
         user_id: int,
@@ -254,11 +289,7 @@ class FeedService:
         limit: int = 100,
         offset: int = 0,
     ) -> list:
-        """Search user's historical items by state filters.
-
-        When state filters (liked, starred, etc.) are used, searches
-        persistent UserItemState. Otherwise searches active feed.
-        """
+        """Search user's historical items by state filters."""
         return self.user_item_state_storage.search(
             user_id=user_id,
             liked=liked,
@@ -272,6 +303,14 @@ class FeedService:
             offset=offset,
         )
 
+    def _get_source_type_map(self, source_names: list[str]) -> dict[str, str]:
+        """Get a mapping of source_name -> source_type for the given source names."""
+        if not source_names:
+            return {}
+        stmt = select(Source.name, Source.source_type).where(Source.name.in_(source_names))
+        results = self.feed_storage.db.execute(stmt).all()
+        return dict(results)
+
     def _get_unread_items(self, active_feed: UserFeedOut | None) -> list[UserFeedItemIn]:
         """Get unread items from the active feed."""
         if not active_feed:
@@ -283,6 +322,7 @@ class FeedService:
                 user_id=item.user_id,
                 title=item.title,
                 source_name=item.source_name or "",
+                source_type=item.source_type,
                 state=item.state,
                 description=item.description,
                 comments_url=item.comments_url,
@@ -296,34 +336,35 @@ class FeedService:
         ]
 
     def _get_seen_item_ids(self, active_feed: UserFeedOut | None, user_id: int) -> set[int]:
-        """Get IDs of items to exclude from new feed.
-
-        Combines:
-        - All items in active feed (read + unread)
-        - All historically read items from persistent state
-        """
+        """Get IDs of items to exclude (active feed items + historically read items)."""
         seen_ids = set()
-
-        # Items in current active feed
         if active_feed:
             seen_ids.update(item.feed_item_id for item in active_feed.user_feed_items)
-
-        # Historically read items (persistent)
         seen_ids.update(self.user_item_state_storage.get_read_item_ids(user_id))
-
         return seen_ids
 
     def _get_new_items(self, user_id: int, seen_ids: set[int]) -> list[UserFeedItemIn]:
         """Get new feed items not already seen."""
         all_items = self.get_items(user_id)
         new_items = [item for item in all_items if item.id not in seen_ids]
-        return [self._feed_item_to_user_feed_item(item, user_id) for item in new_items]
+
+        # Fetch source types for all sources in batch
+        source_names = list({item.source_name for item in new_items if item.source_name})
+        source_type_map = self._get_source_type_map(source_names)
+
+        return [
+            self._feed_item_to_user_feed_item(
+                item, user_id, source_type=source_type_map.get(item.source_name, "rss")
+            )
+            for item in new_items
+        ]
 
     def _feed_item_to_user_feed_item(
         self,
         item: FeedItem,
         user_id: int,
         state: ItemState | None = None,
+        source_type: str = "rss",
     ) -> UserFeedItemIn:
         """Convert a FeedItem model to UserFeedItemIn schema."""
         return UserFeedItemIn(
@@ -331,6 +372,7 @@ class FeedService:
             user_id=user_id,
             title=item.title,
             source_name=item.source_name,
+            source_type=source_type,
             state=state or ItemState(),
             description=item.description or "",
             article_url=item.article_url,
