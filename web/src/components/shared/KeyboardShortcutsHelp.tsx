@@ -15,7 +15,7 @@ const SHORTCUTS: ShortcutEntry[] = [
   { key: 'k / ↑', description: 'Previous item' },
   { key: 'o / Enter', description: 'Open article' },
   { key: 'c', description: 'Open comments' },
-  { key: 'l', description: 'Like (more of this)' },
+  { key: 'l', description: 'Love (more of this)' },
   { key: 'h', description: 'Dismiss' },
   { key: 's', description: 'Save for later' },
   { key: 'r', description: 'Refresh feed' },

@@ -309,7 +309,7 @@ export default function FeedPage(): React.ReactElement {
           <select
             value={sortOption}
             onChange={(e) => handleSortChange(e.target.value as SortOption)}
-            className="h-10 appearance-none rounded-lg border border-border bg-card pl-2 pr-7 sm:pl-3 sm:pr-8 text-sm text-foreground transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
+            className="h-10 appearance-none rounded-xl bg-secondary/50 pl-3 pr-8 text-sm text-foreground transition-all focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:shadow-sm"
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>

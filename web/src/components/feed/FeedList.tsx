@@ -28,8 +28,13 @@ export function FeedList({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-lg font-medium text-foreground">No items in your feed</p>
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="rounded-full bg-secondary p-4 mb-4">
+          <svg className="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+          </svg>
+        </div>
+        <p className="text-lg font-semibold text-foreground">No items yet</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Add some subscriptions to get started
         </p>
@@ -38,7 +43,7 @@ export function FeedList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {items.map((item, index) => (
         <FeedCard
           key={item.id}

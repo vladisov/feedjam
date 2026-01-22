@@ -1,15 +1,12 @@
 import { forwardRef } from 'react'
 import {
-  ArrowTopRightOnSquareIcon,
   BookmarkIcon,
-  ChatBubbleLeftIcon,
-  EyeIcon,
-  HandThumbUpIcon,
+  HeartIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import {
   BookmarkIcon as BookmarkIconSolid,
-  HandThumbUpIcon as HandThumbUpIconSolid,
+  HeartIcon as HeartIconSolid,
 } from '@heroicons/react/24/solid'
 import { cn, formatRelativeTime, truncate } from '@/lib/utils'
 import type { FeedItemActions } from '@/types/actions'
@@ -37,8 +34,8 @@ function ActionButton({
     <button
       onClick={onClick}
       className={cn(
-        'flex-shrink-0 rounded p-1 transition-colors hover:bg-secondary',
-        isActive ? activeColor : 'text-muted-foreground'
+        'flex-shrink-0 rounded-full p-2.5 transition-all hover:bg-secondary/80 active:scale-95',
+        isActive ? activeColor : 'text-muted-foreground hover:text-foreground'
       )}
       title={title}
     >
@@ -81,39 +78,32 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
     <article
       ref={ref}
       className={cn(
-        'group rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/50',
-        isSelected && 'sm:ring-2 sm:ring-primary sm:border-primary',
+        'group rounded-xl bg-card p-4 sm:p-5 shadow-sm ring-1 ring-border/50 transition-all hover:shadow-md hover:ring-border',
+        isSelected && 'sm:ring-2 sm:ring-primary',
         isHidden && 'opacity-40'
       )}
     >
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <a
-            href={item.article_url || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group/link inline-flex items-start gap-1"
-            onClick={handleArticleClick}
-          >
-            <h3 className="text-sm sm:text-base font-medium leading-snug break-words text-foreground group-hover/link:text-primary">
-              {item.title}
-            </h3>
-            <ArrowTopRightOnSquareIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/link:opacity-100" />
-          </a>
-          <p className="mt-0.5 text-xs text-muted-foreground truncate">
-            {item.source_name}
-            {item.created_at && <> &middot; {formatRelativeTime(item.created_at)}</>}
-          </p>
-        </div>
-
-        <div className="flex flex-shrink-0 items-center gap-1">
+      {/* Title + Actions */}
+      <div className="flex items-start justify-between gap-2">
+        <a
+          href={item.article_url || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group/link min-w-0 flex-1"
+          onClick={handleArticleClick}
+        >
+          <h3 className="text-[15px] sm:text-base font-semibold leading-snug tracking-tight text-foreground transition-colors group-hover/link:text-primary">
+            {item.title}
+          </h3>
+        </a>
+        <div className="flex flex-shrink-0 items-center -mr-1.5 -mt-1">
           <ActionButton
             onClick={() => onToggleLike?.(item)}
             isActive={isLiked}
-            activeColor="text-green-500"
+            activeColor="text-red-600"
             title="Like - more of this"
-            OutlineIcon={HandThumbUpIcon}
-            SolidIcon={HandThumbUpIconSolid}
+            OutlineIcon={HeartIcon}
+            SolidIcon={HeartIconSolid}
           />
           <ActionButton
             onClick={() => onToggleStar?.(item)}
@@ -134,36 +124,44 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
         </div>
       </div>
 
+      {/* Source + Time */}
+      <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground/70">{item.source_name}</span>
+        {item.created_at && (
+          <>
+            <span>·</span>
+            <span>{formatRelativeTime(item.created_at)}</span>
+          </>
+        )}
+      </div>
+
+      {/* Summary */}
       {showSummary && item.summary && (
-        <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-3 text-[13px] leading-6 text-foreground/70">
           {truncate(item.summary, 400)}
         </p>
       )}
 
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        {item.points != null && item.points > 0 && (
-          <span className="flex items-center gap-1">
-            <span className="font-medium text-foreground">{item.points}</span> points
-          </span>
-        )}
-        {item.views != null && item.views > 0 && (
-          <span className="flex items-center gap-1">
-            <EyeIcon className="h-3.5 w-3.5" />
-            {item.views.toLocaleString()}
-          </span>
-        )}
-        {item.comments_url && (
-          <a
-            href={item.comments_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 transition-colors hover:text-foreground"
-          >
-            <ChatBubbleLeftIcon className="h-3.5 w-3.5" />
-            comments
-          </a>
-        )}
-      </div>
+      {/* Footer: points + comments */}
+      {(item.points != null && item.points > 0) || item.comments_url ? (
+        <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+          {item.points != null && item.points > 0 && (
+            <span>
+              <span className="font-medium text-foreground/80">{item.points}</span> points
+            </span>
+          )}
+          {item.comments_url && (
+            <a
+              href={item.comments_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-foreground"
+            >
+              comments
+            </a>
+          )}
+        </div>
+      ) : null}
     </article>
   )
 })
