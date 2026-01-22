@@ -38,10 +38,10 @@ export function MainLayout() {
                   to={to}
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center gap-1.5 rounded-xl px-2.5 sm:px-3 py-2 text-sm font-medium transition-all',
+                      'flex items-center gap-1.5 rounded-lg px-2.5 sm:px-3 py-1.5 text-sm font-medium transition-colors',
                       isActive
-                        ? 'bg-secondary text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+                        ? 'bg-secondary text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
                     )
                   }
                 >

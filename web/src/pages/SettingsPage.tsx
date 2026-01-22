@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/shared/Button';
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Button } from '@/components/shared/Button'
 import {
   SunIcon,
   MoonIcon,
@@ -11,119 +11,120 @@ import {
   ClipboardIcon,
   ArrowPathIcon,
   EnvelopeIcon,
-} from '@heroicons/react/24/outline';
-import { api } from '@/lib/api';
+  ChevronUpDownIcon,
+} from '@heroicons/react/24/outline'
+import { api } from '@/lib/api'
 import type {
   UserInterest,
   UserInterestIn,
   UserSettingsIn,
-} from '@/types/feed';
-import { toast } from 'sonner';
+} from '@/types/feed'
+import { toast } from 'sonner'
 
 function getInitialTheme(): boolean {
-  if (typeof window === 'undefined') return false;
-  const saved = localStorage.getItem('theme');
-  if (saved === 'dark') return true;
-  if (saved === 'light') return false;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (typeof window === 'undefined') return false
+  const saved = localStorage.getItem('theme')
+  if (saved === 'dark') return true
+  if (saved === 'light') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
 
-export default function SettingsPage() {
-  const queryClient = useQueryClient();
-  const [isDark, setIsDark] = useState(getInitialTheme);
-  const [newTopic, setNewTopic] = useState('');
-  const [newWeight, setNewWeight] = useState(1.0);
-  const [apiKey, setApiKey] = useState('');
+export default function SettingsPage(): React.ReactElement {
+  const queryClient = useQueryClient()
+  const [isDark, setIsDark] = useState(getInitialTheme)
+  const [newTopic, setNewTopic] = useState('')
+  const [newWeight, setNewWeight] = useState(1.0)
+  const [apiKey, setApiKey] = useState('')
 
   const { data: interests = [], isLoading } = useQuery({
     queryKey: ['interests'],
     queryFn: () => api.getInterests(),
-  });
+  })
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: () => api.getSettings(),
-  });
+  })
 
   const { data: inbox } = useQuery({
     queryKey: ['inbox'],
     queryFn: () => api.getInbox(),
-  });
+  })
 
   const addInterestMutation = useMutation({
     mutationFn: (interest: UserInterestIn) => api.addInterest(interest),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['interests'] });
-      setNewTopic('');
-      setNewWeight(1.0);
+      queryClient.invalidateQueries({ queryKey: ['interests'] })
+      setNewTopic('')
+      setNewWeight(1.0)
     },
-  });
+  })
 
   const deleteInterestMutation = useMutation({
     mutationFn: (interestId: number) => api.deleteInterest(interestId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['interests'] });
+      queryClient.invalidateQueries({ queryKey: ['interests'] })
     },
-  });
+  })
 
   const updateSettingsMutation = useMutation({
     mutationFn: (settingsIn: UserSettingsIn) => api.updateSettings(settingsIn),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['settings'] });
-      setApiKey('');
-      toast.success('API key saved');
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+      setApiKey('')
+      toast.success('API key saved')
     },
     onError: () => {
-      toast.error('Failed to save API key');
+      toast.error('Failed to save API key')
     },
-  });
+  })
 
   const regenerateInboxMutation = useMutation({
     mutationFn: () => api.regenerateInbox(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inbox'] });
-      toast.success('Inbox address regenerated');
+      queryClient.invalidateQueries({ queryKey: ['inbox'] })
+      toast.success('Inbox address regenerated')
     },
     onError: () => {
-      toast.error('Failed to regenerate inbox address');
+      toast.error('Failed to regenerate inbox address')
     },
-  });
+  })
 
-  const handleAddInterest = (e: React.FormEvent): void => {
-    e.preventDefault();
+  function handleAddInterest(e: React.FormEvent): void {
+    e.preventDefault()
     if (newTopic.trim()) {
-      addInterestMutation.mutate({ topic: newTopic.trim(), weight: newWeight });
+      addInterestMutation.mutate({ topic: newTopic.trim(), weight: newWeight })
     }
-  };
+  }
 
-  const handleSaveApiKey = (e: React.FormEvent): void => {
-    e.preventDefault();
-    updateSettingsMutation.mutate({ openai_api_key: apiKey || null });
-  };
+  function handleSaveApiKey(e: React.FormEvent): void {
+    e.preventDefault()
+    updateSettingsMutation.mutate({ openai_api_key: apiKey || null })
+  }
 
-  const handleRemoveApiKey = (): void => {
-    updateSettingsMutation.mutate({ openai_api_key: '' });
-  };
+  function handleRemoveApiKey(): void {
+    updateSettingsMutation.mutate({ openai_api_key: '' })
+  }
 
-  const handleCopyInbox = (): void => {
-    if (!inbox?.inbox_address) return;
+  function handleCopyInbox(): void {
+    if (!inbox?.inbox_address) return
 
     navigator.clipboard
       .writeText(inbox.inbox_address)
       .then(() => toast.success('Copied to clipboard'))
-      .catch(() => toast.error('Failed to copy to clipboard'));
-  };
+      .catch(() => toast.error('Failed to copy to clipboard'))
+  }
 
-  const handleRegenerateInbox = (): void => {
+  function handleRegenerateInbox(): void {
     if (confirm('Are you sure? The old address will stop working.')) {
-      regenerateInboxMutation.mutate();
+      regenerateInboxMutation.mutate()
     }
-  };
+  }
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  }, [isDark]);
+    document.documentElement.classList.toggle('dark', isDark)
+    localStorage.setItem('theme', isDark ? 'dark' : 'light')
+  }, [isDark])
 
   return (
     <div>
@@ -148,36 +149,36 @@ export default function SettingsPage() {
           </p>
 
           {/* Add interest form */}
-          <form
-            onSubmit={handleAddInterest}
-            className="mb-4 space-y-2 sm:space-y-0 sm:flex sm:gap-2"
-          >
+          <form onSubmit={handleAddInterest} className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               type="text"
               value={newTopic}
               onChange={(e) => setNewTopic(e.target.value)}
               placeholder="e.g., python, rust, machine-learning"
-              className="h-10 w-full sm:flex-1 rounded-xl bg-secondary/50 px-4 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:bg-card focus:outline-none focus:ring-1 focus:ring-border"
+              className="h-9 w-full rounded-lg bg-secondary/50 px-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:bg-card focus:outline-none focus:ring-1 focus:ring-border sm:flex-1"
             />
-            <div className="flex gap-2">
-              <select
-                value={newWeight}
-                onChange={(e) => setNewWeight(parseFloat(e.target.value))}
-                className="h-10 flex-1 sm:flex-none rounded-xl bg-secondary/50 px-3 text-sm text-foreground transition-all focus:bg-card focus:outline-none focus:ring-1 focus:ring-border"
-              >
-                <option value={0.5}>Low</option>
-                <option value={1.0}>Normal</option>
-                <option value={1.5}>High</option>
-                <option value={2.0}>Very High</option>
-              </select>
-              <Button
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={newWeight}
+                  onChange={(e) => setNewWeight(parseFloat(e.target.value))}
+                  className="h-9 w-full appearance-none rounded-lg bg-secondary/50 pl-3 pr-7 text-sm text-foreground transition-colors focus:bg-card focus:outline-none focus:ring-1 focus:ring-border sm:w-auto"
+                >
+                  <option value={0.5}>Low</option>
+                  <option value={1.0}>Normal</option>
+                  <option value={1.5}>High</option>
+                  <option value={2.0}>Very High</option>
+                </select>
+                <ChevronUpDownIcon className="pointer-events-none absolute right-1.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              </div>
+              <button
                 type="submit"
                 disabled={!newTopic.trim() || addInterestMutation.isPending}
-                className="gap-1"
+                className="flex h-9 flex-shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
               >
                 <PlusIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Add</span>
-              </Button>
+                Add
+              </button>
             </div>
           </form>
 
@@ -369,5 +370,5 @@ export default function SettingsPage() {
         </section>
       </div>
     </div>
-  );
+  )
 }

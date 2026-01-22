@@ -263,3 +263,16 @@ class UserItemStateStorage:
             )
         )
         return self.db.execute(stmt).scalar_one_or_none()
+
+    def get_states_batch(self, user_id: int, feed_item_ids: list[int]) -> dict[int, UserItemState]:
+        """Get states for multiple items. Returns dict keyed by feed_item_id."""
+        if not feed_item_ids:
+            return {}
+        stmt = select(UserItemState).where(
+            and_(
+                UserItemState.user_id == user_id,
+                UserItemState.feed_item_id.in_(feed_item_ids),
+            )
+        )
+        states = self.db.execute(stmt).scalars().all()
+        return {state.feed_item_id: state for state in states}

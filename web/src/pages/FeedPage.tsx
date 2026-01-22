@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useFeedQuery } from '@/hooks/useFeedQuery'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { FeedList } from '@/components/feed/FeedList'
 import { SearchBar } from '@/components/feed/SearchBar'
 import { PageLoader } from '@/components/shared/LoadingSpinner'
@@ -55,8 +56,6 @@ function sortItems(items: FeedItem[], sortBy: SortOption): FeedItem[] {
       return sorted.sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
     case 'source':
       return sorted.sort((a, b) => a.source_name.localeCompare(b.source_name))
-    default:
-      return sorted
   }
 }
 
@@ -124,9 +123,9 @@ export default function FeedPage(): React.ReactElement {
   // Apply local state updates to items, filtering out server-hidden items without local updates
   const items = useMemo(() => {
     return rawItems
-      .filter((item) => !item.state.hide || localUpdates[item.id])
+      .filter((item) => !item.state.hide || localUpdates[item.feed_item_id])
       .map((item) => {
-        const updates = localUpdates[item.id]
+        const updates = localUpdates[item.feed_item_id]
         return updates ? { ...item, state: { ...item.state, ...updates } } : item
       })
   }, [rawItems, localUpdates])
@@ -157,12 +156,12 @@ export default function FeedPage(): React.ReactElement {
   }
 
   function handleToggleLike(item: FeedItem): void {
-    updateItemState(item.id, { like: !item.state.like, hide: false })
+    updateItemState(item.feed_item_id, { like: !item.state.like, hide: false })
     api.toggleLike(item.feed_item_id)
   }
 
   function handleToggleStar(item: FeedItem): void {
-    updateItemState(item.id, { star: !item.state.star })
+    updateItemState(item.feed_item_id, { star: !item.state.star })
     api.toggleStar(item.feed_item_id)
   }
 
@@ -171,22 +170,34 @@ export default function FeedPage(): React.ReactElement {
   }
 
   function handleToggleHide(item: FeedItem): void {
-    updateItemState(item.id, { hide: !item.state.hide, like: false })
+    updateItemState(item.feed_item_id, { hide: !item.state.hide, like: false })
     api.toggleHide(item.feed_item_id)
   }
+
+  // Apply local updates to any items list
+  const applyLocalUpdates = useCallback(
+    (itemList: FeedItem[]): FeedItem[] => {
+      return itemList.map((item) => {
+        const updates = localUpdates[item.feed_item_id]
+        return updates ? { ...item, state: { ...item.state, ...updates } } : item
+      })
+    },
+    [localUpdates]
+  )
 
   // Get filtered items based on active tab (needed for keyboard shortcuts)
   const filteredItems = useMemo(() => {
     if (activeTab === 'digest') {
-      return applySearch(digestQuery.data ?? [], searchQuery)
+      const digestItems = applyLocalUpdates(digestQuery.data ?? [])
+      return applySearch(digestItems, searchQuery)
     }
 
     const result = needsServerSearch
       ? (serverSearch.data ?? []).map(toFeedItem)
       : applySearch(items, searchQuery)
 
-    return sortItems(result, sortOption)
-  }, [activeTab, digestQuery.data, needsServerSearch, serverSearch.data, items, searchQuery, sortOption])
+    return sortItems(applyLocalUpdates(result), sortOption)
+  }, [activeTab, digestQuery.data, needsServerSearch, serverSearch.data, items, searchQuery, sortOption, applyLocalUpdates])
 
   function handleSortChange(newSort: SortOption): void {
     setSortOption(newSort)
@@ -239,6 +250,12 @@ export default function FeedPage(): React.ReactElement {
     enabled: true,
   })
 
+  // Pull-to-refresh for mobile
+  const { containerRef } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    enabled: true,
+  })
+
   const totalCount = useMemo(() => items.filter((item) => !item.state.hide).length, [items])
 
   function toggleShowSummaries(): void {
@@ -273,7 +290,7 @@ export default function FeedPage(): React.ReactElement {
   }
 
   return (
-    <div>
+    <div ref={containerRef}>
       {/* Tabs + Actions */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex">

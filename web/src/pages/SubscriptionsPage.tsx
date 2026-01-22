@@ -88,19 +88,23 @@ export default function SubscriptionsPage(): React.ReactElement {
 
       {/* Add subscription form */}
       <form onSubmit={handleSubmit} className="mb-6 sm:mb-8">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex items-center gap-2">
           <input
             type="url"
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
             placeholder="Enter RSS feed URL..."
-            className="h-10 w-full sm:flex-1 rounded-xl bg-secondary/50 px-4 text-sm text-foreground placeholder:text-muted-foreground transition-all focus:bg-card focus:outline-none focus:ring-1 focus:ring-border"
+            className="h-9 min-w-0 flex-1 rounded-lg bg-secondary/50 px-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:bg-card focus:outline-none focus:ring-1 focus:ring-border"
             required
           />
-          <Button type="submit" disabled={isAdding || !newUrl.trim()} className="flex-shrink-0">
-            <PlusIcon className="mr-2 h-4 w-4" />
-            Add
-          </Button>
+          <button
+            type="submit"
+            disabled={isAdding || !newUrl.trim()}
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 sm:w-auto sm:px-3 sm:gap-1.5"
+          >
+            <PlusIcon className="h-4 w-4" />
+            <span className="hidden sm:inline text-sm font-medium">Add</span>
+          </button>
         </div>
       </form>
 

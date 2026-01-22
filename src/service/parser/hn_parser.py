@@ -32,7 +32,7 @@ class HackerNewsParser(BaseParser):
 
     def parse(self, source: Source) -> list[FeedItemIn]:
         """Parse Hacker News RSS feed."""
-        logger.info(f"Fetching HN feed: {source.resource_url}")
+        logger.info(f"Parsing HN feed: {source.resource_url}")
 
         feed = feedparser.parse(source.resource_url)
 

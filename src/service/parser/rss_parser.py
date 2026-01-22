@@ -44,13 +44,16 @@ class RSSParser(BaseParser):
 
     def parse(self, source: Source) -> list[FeedItemIn]:
         """Parse RSS/Atom feed."""
+        logger.info(f"Parsing RSS feed: {source.resource_url}")
         feed = feedparser.parse(source.resource_url)
 
         if feed.bozo and not feed.entries:
             logger.warning(f"Feed parsing error for {source.resource_url}: {feed.bozo_exception}")
             return []
 
-        return [self._parse_entry(entry, source.name) for entry in feed.entries]
+        items = [self._parse_entry(entry, source.name) for entry in feed.entries]
+        logger.info(f"Parsed {len(items)} items from RSS: {source.name}")
+        return items
 
     def get_source_name(self, url: str) -> str:
         """Generate name from RSS feed URL."""

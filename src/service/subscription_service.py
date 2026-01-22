@@ -28,6 +28,9 @@ class SubscriptionService:
         """Internal method to create a subscription."""
         # Auto-detect source type from URL
         source_type = detect_source_type(resource_url) or SourceType.RSS.value
+        logger.info(
+            f"Creating subscription: user={user_id} url={resource_url} detected_type={source_type}"
+        )
 
         # Generate source name
         source_name = parse_source_name(resource_url, source_type)
@@ -43,7 +46,10 @@ class SubscriptionService:
 
         # Create subscription
         result = self.subscription_storage.create(user_id, source.id)
-        logger.debug("Created subscription: %s", result)
+        logger.info(
+            f"Subscription created: user={user_id} subscription={result.id} "
+            f"source={source_name} type={source_type}"
+        )
         return result
 
     def create(self, subscription: SubscriptionIn) -> SubscriptionOut:
@@ -78,9 +84,14 @@ class SubscriptionService:
         """Get all active subscriptions."""
         return [SubscriptionOut.model_validate(s) for s in self.subscription_storage.get_active()]
 
-    def delete(self, subscription_id: int) -> bool:
+    def delete(self, subscription_id: int, user_id: int | None = None) -> bool:
         """Delete a subscription."""
-        return self.subscription_storage.delete(subscription_id)
+        result = self.subscription_storage.delete(subscription_id)
+        if result:
+            logger.info(f"Deleted subscription: user={user_id} subscription={subscription_id}")
+        else:
+            logger.warning(f"Subscription not found: user={user_id} subscription={subscription_id}")
+        return result
 
     def preview_feed(self, resource_url: str) -> FeedPreviewOut:
         """Preview a feed URL without subscribing."""

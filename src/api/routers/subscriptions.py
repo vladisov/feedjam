@@ -85,7 +85,7 @@ def delete_subscription(
 ):
     """Delete a subscription."""
     _get_user_subscription(subscription_id, user_id, subscription_service)
-    subscription_service.delete(subscription_id)
+    subscription_service.delete(subscription_id, user_id=user_id)
     return {"status": "ok"}
 
 

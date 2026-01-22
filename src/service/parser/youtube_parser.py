@@ -31,13 +31,16 @@ class YouTubeParser(BaseParser):
     def parse(self, source: Source) -> list[FeedItemIn]:
         """Parse YouTube RSS feed."""
         url = self._normalize_url(source.resource_url)
+        logger.info(f"Parsing YouTube feed: {url}")
         feed = feedparser.parse(url)
 
         if feed.bozo and not feed.entries:
             logger.warning(f"Feed parsing error for {url}: {feed.bozo_exception}")
             return []
 
-        return [self._parse_entry(entry, source.name) for entry in feed.entries]
+        items = [self._parse_entry(entry, source.name) for entry in feed.entries]
+        logger.info(f"Parsed {len(items)} items from YouTube: {source.name}")
+        return items
 
     def get_source_name(self, url: str) -> str:
         """Generate name from YouTube URL."""

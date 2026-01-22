@@ -58,6 +58,7 @@ class TelegramParser(BaseParser):
     def parse(self, source: Source) -> list[FeedItemIn]:
         """Parse a Telegram channel's public page."""
         url = self._normalize_url(source.resource_url)
+        logger.info(f"Parsing Telegram channel: {url}")
         html = self._fetch_with_retry(url)
 
         if not html:
@@ -76,7 +77,7 @@ class TelegramParser(BaseParser):
                 logger.warning(f"Failed to parse Telegram message: {e}")
                 continue
 
-        logger.info(f"Parsed {len(feed_items)} items from Telegram channel: {source.name}")
+        logger.info(f"Parsed {len(feed_items)} items from Telegram: {source.name}")
         return feed_items
 
     def get_source_name(self, url: str) -> str:

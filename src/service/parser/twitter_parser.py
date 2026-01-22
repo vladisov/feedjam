@@ -65,7 +65,7 @@ class TwitterParser(BaseParser):
     def parse(self, source: Source) -> list[FeedItemIn]:
         """Parse Twitter feed via Nitter RSS."""
         rss_url = self._get_nitter_rss_url(source.resource_url)
-        logger.info(f"Fetching Twitter feed via Nitter: {rss_url}")
+        logger.info(f"Parsing Twitter feed: {rss_url}")
 
         feed = feedparser.parse(rss_url)
 
@@ -93,6 +93,7 @@ class TwitterParser(BaseParser):
                 logger.warning(f"Failed to parse Twitter entry: {e}")
                 continue
 
+        logger.info(f"Parsed {len(items)} items from Twitter: {source.name}")
         return items
 
     def get_source_name(self, url: str) -> str:

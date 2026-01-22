@@ -56,7 +56,7 @@ class RedditParser(BaseParser):
     def parse(self, source: Source) -> list[FeedItemIn]:
         """Parse Reddit JSON feed."""
         url = self._normalize_url(source.resource_url)
-        logger.info(f"Fetching Reddit feed: {url}")
+        logger.info(f"Parsing Reddit feed: {url}")
 
         try:
             response = requests.get(url, headers=HEADERS, timeout=10)

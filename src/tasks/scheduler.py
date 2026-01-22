@@ -35,7 +35,9 @@ def fetch_subscription(subscription_id: int) -> bool:
             logger.error(f"Subscription {subscription_id} not found")
             return False
 
-        factory = _create_factory_with_user_key(db, subscription.user_id)
+        user_id = subscription.user_id
+        logger.info(f"Starting fetch: user={user_id} subscription={subscription_id}")
+        factory = _create_factory_with_user_key(db, user_id)
 
         try:
             items = factory.feed_service.fetch_and_save_items(subscription_id)
@@ -49,12 +51,14 @@ def fetch_subscription(subscription_id: int) -> bool:
                     item_count=item_count,
                 ),
             )
-            logger.info(f"Successfully fetched subscription {subscription_id}: {item_count} items")
+            logger.info(
+                f"Fetch completed: user={user_id} subscription={subscription_id} items={item_count}"
+            )
             return True
 
         except Exception as e:
             error_msg = str(e)[:500]  # Truncate long errors
-            logger.error(f"Error fetching subscription {subscription_id}: {e}")
+            logger.error(f"Fetch failed: user={user_id} subscription={subscription_id} error={e}")
             factory.subscription_storage.update(
                 subscription_id,
                 SubscriptionUpdate(

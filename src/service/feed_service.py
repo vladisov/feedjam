@@ -1,5 +1,7 @@
 """Feed service - handles feed fetching and generation."""
 
+import time
+
 from sqlalchemy import select
 
 from api.exceptions import EntityNotFoundException, ParserNotFoundException
@@ -63,20 +65,48 @@ class FeedService:
         if not source:
             raise EntityNotFoundException("Source", subscription.source_id)
 
+        logger.info(
+            f"Fetching items: user={subscription.user_id} subscription={subscription_id} "
+            f"source={source.name} type={source.source_type} url={source.resource_url}"
+        )
+
         parser = get_parser_for_source(source)
         if not parser:
+            logger.error(f"No parser found for source type: {source.source_type}")
             raise ParserNotFoundException(source.source_type or "unknown")
 
-        items = parser.parse(source)
+        parser_name = parser.__class__.__name__
+        logger.info(f"Selected parser: {parser_name} for source: {source.name}")
+
+        start_time = time.time()
+        try:
+            items = parser.parse(source)
+        except Exception as e:
+            logger.error(f"Parser {parser_name} failed for {source.name}: {e}", exc_info=True)
+            raise
+
+        parse_duration = time.time() - start_time
+        logger.info(
+            f"Parser {parser_name} returned {len(items)} items "
+            f"in {parse_duration:.2f}s for source: {source.name}"
+        )
 
         # Batch process items with LLM (summarize, extract topics, score quality)
         if config.ENABLE_SUMMARIZATION and items:
             try:
+                process_start = time.time()
                 items = self.content_processor.process_items_smart(items)
+                process_duration = time.time() - process_start
+                logger.info(
+                    f"Content processing completed: {len(items)} items "
+                    f"in {process_duration:.2f}s for source: {source.name}"
+                )
             except Exception as e:
-                logger.warning(f"Failed to process items: {e}")
+                logger.warning(f"Content processing failed for {source.name}: {e}")
 
         self.feed_storage.save_items(source, items)
+        logger.info(f"Saved {len(items)} items to storage for source: {source.name}")
+
         return items
 
     def get_items(self, user_id: int, skip: int = 0, limit: int = 100):
@@ -97,7 +127,26 @@ class FeedService:
         if not recent_items:
             return []
 
-        items = [self._feed_item_to_user_feed_item(item, user_id) for item in recent_items]
+        # Fetch user states for all items in batch
+        feed_item_ids = [item.id for item in recent_items]
+        states_map = self.user_item_state_storage.get_states_batch(user_id, feed_item_ids)
+
+        def get_item_state(feed_item_id: int) -> ItemState:
+            state = states_map.get(feed_item_id)
+            if not state:
+                return ItemState()
+            return ItemState(
+                read=state.read,
+                like=state.liked,
+                dislike=state.disliked,
+                star=state.starred,
+                hide=state.hidden,
+            )
+
+        items = [
+            self._feed_item_to_user_feed_item(item, user_id, get_item_state(item.id))
+            for item in recent_items
+        ]
         ranked = self.ranking_service.compute_rank_scores(user_id, items)
         return ranked[:top_n]
 
@@ -270,14 +319,19 @@ class FeedService:
         new_items = [item for item in all_items if item.id not in seen_ids]
         return [self._feed_item_to_user_feed_item(item, user_id) for item in new_items]
 
-    def _feed_item_to_user_feed_item(self, item: FeedItem, user_id: int) -> UserFeedItemIn:
+    def _feed_item_to_user_feed_item(
+        self,
+        item: FeedItem,
+        user_id: int,
+        state: ItemState | None = None,
+    ) -> UserFeedItemIn:
         """Convert a FeedItem model to UserFeedItemIn schema."""
         return UserFeedItemIn(
             feed_item_id=item.id,
             user_id=user_id,
             title=item.title,
             source_name=item.source_name,
-            state=ItemState(),
+            state=state or ItemState(),
             description=item.description or "",
             article_url=item.article_url,
             comments_url=item.comments_url,
