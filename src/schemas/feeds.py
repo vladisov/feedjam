@@ -72,6 +72,7 @@ class UserFeedItemIn(BaseModel):
     views: int | None = None
     summary: str | None = None
     rank_score: float = 0.0
+    published: datetime | None = None
     created_at: datetime | None = None
 
 
@@ -94,6 +95,7 @@ class UserFeedItemOut(BaseModel):
     summary: str | None = None
     rank_score: float = 0.0
     state: ItemState
+    published: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

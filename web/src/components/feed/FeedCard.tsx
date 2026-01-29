@@ -133,10 +133,10 @@ export const FeedCard = forwardRef<HTMLDivElement, FeedCardProps>(function FeedC
       {/* Source + Time */}
       <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
         <span className="font-medium text-foreground/60">{item.source_name}</span>
-        {item.created_at && (
+        {(item.published || item.created_at) && (
           <>
             <span>·</span>
-            <span>{formatRelativeTime(item.created_at)}</span>
+            <span>{formatRelativeTime(item.published ?? item.created_at)}</span>
           </>
         )}
       </div>

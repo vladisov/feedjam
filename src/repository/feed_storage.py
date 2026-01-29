@@ -126,6 +126,7 @@ class FeedStorage:
             summary=item.summary,
             rank_score=item.rank_score,
             state=item_state,
+            published=item.published,
             created_at=item.created_at,
             updated_at=item.updated_at,
         )

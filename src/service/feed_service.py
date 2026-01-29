@@ -330,6 +330,7 @@ class FeedService:
                 points=item.points,
                 summary=item.summary,
                 views=item.views,
+                published=item.published,
             )
             for item in active_feed.user_feed_items
             if not item.state.read
@@ -380,5 +381,6 @@ class FeedService:
             points=item.points,
             views=item.views,
             summary=item.summary,
+            published=item.published,
             created_at=item.created_at,
         )

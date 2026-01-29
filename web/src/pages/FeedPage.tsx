@@ -35,7 +35,8 @@ function getStoredBoolean(key: string, defaultValue: boolean): boolean {
 }
 
 function getDateValue(item: FeedItem): number {
-  return item.created_at ? new Date(item.created_at).getTime() : 0
+  const date = item.published ?? item.created_at
+  return date ? new Date(date).getTime() : 0
 }
 
 function sortItems(items: FeedItem[], sortBy: SortOption): FeedItem[] {
@@ -91,6 +92,7 @@ function toFeedItem(item: SearchResultItem): FeedItem {
     views: item.views,
     rank_score: 0,
     state: { ...item.state },
+    published: item.published,
     created_at: item.created_at,
     updated_at: item.updated_at,
   }

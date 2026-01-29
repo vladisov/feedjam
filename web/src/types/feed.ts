@@ -12,6 +12,7 @@ export interface FeedItem {
   views: number | null
   rank_score: number
   state: FeedItemState
+  published: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -128,6 +129,7 @@ export interface DigestItem {
   views: number | null
   summary: string | null
   rank_score: number
+  published: string | null
   created_at: string | null
 }
 
