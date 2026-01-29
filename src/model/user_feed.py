@@ -43,6 +43,7 @@ class UserFeedItem(Base):
     points: Mapped[int] = mapped_column(default=0)
     views: Mapped[int] = mapped_column(default=0)
     rank_score: Mapped[float] = mapped_column(default=0.0)
+    published: Mapped[datetime | None] = mapped_column(default=None)
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
